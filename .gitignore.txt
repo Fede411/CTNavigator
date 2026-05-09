@@ -1,0 +1,18 @@
+# Visual Studio
+**/bin/
+**/obj/
+**/.vs/
+*.user
+*.suo
+
+# NuGet packages
+**/packages/
+*.nupkg
+
+# Build outputs
+*.dll
+*.pdb
+
+# Otros
+*.log
+Thumbs.db
