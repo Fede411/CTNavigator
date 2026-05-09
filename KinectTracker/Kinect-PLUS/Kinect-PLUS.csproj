@@ -107,8 +107,14 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BlobDetector.cs" />
+    <Compile Include="Constants.cs" />
+    <Compile Include="DepthMapper.cs" />
+    <Compile Include="ImageUtils.cs" />
+    <Compile Include="KinectConfig.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ViewerWindow.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
