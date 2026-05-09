@@ -39,14 +39,19 @@ namespace KinectTracker
         static bool useDepthA = true;
         const int MIN_DEPTH = 800;  //mm
         const int MAX_DEPTH = 4000; //mm
+        const int SEARCH_RADIUS = 30; //pixeles para buscar depth válido alrededor del centroide
 
         // Detección de blobs
         static System.Collections.Generic.List<PointF> detectedCentroids = new System.Collections.Generic.List<PointF>();
         static readonly object centroidsLock = new object();
+        static List<SkeletonPoint> detected3DPoints = new List<SkeletonPoint>(); //Posiciones 3D estimadas a partir de los centroides 2D y la profundidad
 
         // Parámetros de detección
-        const int MIN_BLOB_AREA = 30;    // pixeles mínimos
-        const int MAX_BLOB_AREA = 1000;   // pixeles máximos
+        const int MIN_BLOB_AREA = 0;             //pixeles mínimos
+        const int MAX_BLOB_AREA = 1000;          //pixeles máximos
+        const double MIN_CIRCULARITY = 0.5;      //Esferas son redondas (~1.0), rechaza líneas/ruido
+        const double MIN_ASPECT = 0.6;           //Aspect ratio mínimo (rechaza líneas alargadas)
+        const double MAX_ASPECT = 1.7;           //Aspect ratio máximo
 
         [STAThread]
         static void Main(string[] args)
@@ -80,8 +85,6 @@ namespace KinectTracker
             depthBufferA = new Bitmap(IMG_WIDTH, IMG_HEIGHT, PixelFormat.Format32bppRgb);
             depthBufferB = new Bitmap(IMG_WIDTH, IMG_HEIGHT, PixelFormat.Format32bppRgb);
 
-            //sensor.ColorFrameReady += Sensor_ColorFrameReady;
-            //sensor.DepthFrameReady += Sensor_DepthFrameReady;
             sensor.AllFramesReady += Sensor_AllFramesReady;
 
             try
@@ -163,22 +166,6 @@ namespace KinectTracker
             Application.Run(viewerForm); //El bloqueo
         }
 
-        static void Sensor_ColorFrameReady(object sender, ColorImageFrameReadyEventArgs e)
-        {
-            using (ColorImageFrame frame = e.OpenColorImageFrame())
-            {
-                if (frame == null) return; //Verificamos que hay frame y ventana
-
-                if (irPictureBox == null || irPictureBox.IsDisposed || !irPictureBox.IsHandleCreated)
-                    return;
-
-                frame.CopyPixelDataTo(colorPixels); //Cada pixel son 2 bytes (uint16, valores 0-65535)
-                //Pasamos de IR (16 bits) a algo visualizable (8 bits)
-
-                
-            }
-        }
-
         //Dibujar círculo en imagen BGRA en memoria
         static void DrawCircle(byte[] pixels, int cx, int cy, int radius, byte r, byte g, byte b)
         {
@@ -212,11 +199,6 @@ namespace KinectTracker
                 depthFrame.CopyPixelDataTo(depthData);
 
                 // === 2. Procesar IR ===
-                // (todo lo que tenías en Sensor_ColorFrameReady DESPUÉS del CopyPixelDataTo)
-                // - Bucle threshold
-                // - Detección de blobs
-                // - Dibujar círculos
-                // - Actualizar irPictureBox
 
                 for (int i = 0; i < IMG_WIDTH * IMG_HEIGHT; i++)
                 {
@@ -241,13 +223,12 @@ namespace KinectTracker
 
                 //Detección de blobs
                 Mat irMat = new Mat(IMG_HEIGHT, IMG_WIDTH, DepthType.Cv8U, 1); //Matrix, equivalente al bitmap pero en OpenCV
-                //Esta línea da bastante problema
                 byte[] grayPixels = new byte[IMG_WIDTH * IMG_HEIGHT];
 
                 //Extraemos solo el canal R (que es igual a B y G en escala de grises)
                 for (int i = 0; i < IMG_WIDTH * IMG_HEIGHT; i++)
                 {
-                    grayPixels[i] = irPixels[i * 4 + 2]; //R channel, tienen los 3 el mismo valor igualmente tras el threshold
+                    grayPixels[i] = irPixels[i * 4 + 2]; //R channel
                 }
 
                 System.Runtime.InteropServices.Marshal.Copy(grayPixels, 0, irMat.DataPointer, grayPixels.Length); //Copiamos al mat
@@ -261,8 +242,9 @@ namespace KinectTracker
                 Mat hierarchy = new Mat();
                 CvInvoke.FindContours(irMat, contours, hierarchy, RetrType.External, ChainApproxMethod.ChainApproxSimple);
 
-                //Calcular centroides y filtrar por área
+                //Calcular centroides y filtrar por área, circularidad y aspect ratio
                 List<PointF> currentCentroids = new List<PointF>();
+                List<SkeletonPoint> current3DPoints = new List<SkeletonPoint>();
 
                 for (int i = 0; i < contours.Size; i++)
                 {
@@ -270,63 +252,115 @@ namespace KinectTracker
                     {
                         double area = CvInvoke.ContourArea(contour);
 
-                        //Filtrar por área
+                        //Filtro 1: por área
                         if (area < MIN_BLOB_AREA || area > MAX_BLOB_AREA)
                             continue;
 
+                        //Filtro 2: circularidad (esferas son redondas, ~1.0)
+                        //Fórmula: 4π × área / perímetro²
+                        double perimeter = CvInvoke.ArcLength(contour, true);
+                        double circularity = perimeter > 0 ? 4 * Math.PI * area / (perimeter * perimeter) : 0;
+                        if (circularity < MIN_CIRCULARITY) continue;
+
+                        //Filtro 3: aspect ratio (esferas son aprox cuadradas en bounding box)
+                        Rectangle bbox = CvInvoke.BoundingRectangle(contour);
+                        double aspect = (double)bbox.Width / Math.Max(1, bbox.Height);
+                        if (aspect < MIN_ASPECT || aspect > MAX_ASPECT) continue;
+
                         //Calcular centroide via momentos
                         Moments moments = CvInvoke.Moments(contour);
-                        if (moments.M00 > 0)
+                        if (moments.M00 == 0) continue;
+
+                        float cx = (float)(moments.M10 / moments.M00);
+                        float cy = (float)(moments.M01 / moments.M00);
+
+                        //Validar dentro de imagen
+                        int xInt = (int)cx;
+                        int yInt = (int)cy;
+                        if (xInt < 0 || xInt >= IMG_WIDTH || yInt < 0 || yInt >= IMG_HEIGHT)
+                            continue;
+
+                        //Leer depth alrededor del centroide buscando el MÍNIMO válido
+                        //(las esferas reflectivas saturan el sensor, pero el borde sí da depth válido)
+                        int depthMm = int.MaxValue;
+
+                        for (int dy = -SEARCH_RADIUS; dy <= SEARCH_RADIUS; dy++)
                         {
-                            float cx = (float)(moments.M10 / moments.M00);
-                            float cy = (float)(moments.M01 / moments.M00);
-                            currentCentroids.Add(new PointF(cx, cy));
+                            for (int dx = -SEARCH_RADIUS; dx <= SEARCH_RADIUS; dx++)
+                            {
+                                int sx = xInt + dx;
+                                int sy = yInt + dy;
+                                if (sx < 0 || sx >= IMG_WIDTH || sy < 0 || sy >= IMG_HEIGHT) continue;
+
+                                int sIdx = sy * IMG_WIDTH + sx;
+                                int rawSample = depthData[sIdx] & 0xFFFF; //Forzar interpretación sin signo
+                                int sample = rawSample >> 3;
+
+                                if (sample >= MIN_DEPTH && sample <= MAX_DEPTH && sample < depthMm)
+                                {
+                                    depthMm = sample;
+                                }
+                            }
                         }
+
+                        //Validar depth válido
+                        if (depthMm == int.MaxValue || depthMm < MIN_DEPTH || depthMm > MAX_DEPTH)
+                            continue;
+
+                        //Convertir a 3D
+                        SkeletonPoint world = sensor.CoordinateMapper.MapDepthPointToSkeletonPoint(
+                            DepthImageFormat.Resolution640x480Fps30,
+                            new DepthImagePoint { X = xInt, Y = yInt, Depth = depthMm }
+                        );
+
+                        //Guardar 2D y 3D
+                        currentCentroids.Add(new PointF(cx, cy));
+                        current3DPoints.Add(world);
                     }
                 }
 
-                //5. Guardar centroides (thread-safe)
+                //Guardar centroides (thread-safe)
                 lock (centroidsLock)
                 {
                     detectedCentroids = currentCentroids;
+                    detected3DPoints = current3DPoints;
                 }
 
                 //Debug: mostrar coordenadas
-                if (currentCentroids.Count > 0 && DateTime.Now.Millisecond < 50) //limita output
+                if (currentCentroids.Count > 0)
                 {
                     Console.WriteLine($"\n[{DateTime.Now:HH:mm:ss}] Detectados {currentCentroids.Count} blobs:");
-                    foreach (var c in currentCentroids)
+                    for (int i = 0; i < currentCentroids.Count; i++)
                     {
-                        Console.WriteLine($"  ({c.X:F1}, {c.Y:F1})");
+                        var c = currentCentroids[i];
+                        var p = current3DPoints[i];
+                        Console.WriteLine($"  2D: ({c.X:F1}, {c.Y:F1})  3D: ({p.X * 1000:F0}, {p.Y * 1000:F0}, {p.Z * 1000:F0}) mm");
                     }
                 }
 
-                //6. Dibujar círculos sobre irPixels en las posiciones detectadas
+                //Dibujar círculos sobre irPixels en las posiciones detectadas
                 foreach (PointF centroid in currentCentroids)
                 {
                     DrawCircle(irPixels, (int)centroid.X, (int)centroid.Y, 8, 0, 255, 0); //verde
                 }
 
-                //7. Cleanup
+                //Cleanup
                 irMat.Dispose();
                 kernel.Dispose();
                 contours.Dispose();
                 hierarchy.Dispose();
 
-
-                // Escribir en el buffer que NO está siendo mostrado, para cambiar a él periodicamente y evitar editarlo mientras se muestra (da error)
+                // Escribir en el buffer IR
                 Bitmap writeBuffer = useIrA ? irBufferA : irBufferB;
 
-                BitmapData bmpData = writeBuffer.LockBits( //Creamos acceso directo a la memoria del bitmap para escribir los pixeles
+                BitmapData bmpData = writeBuffer.LockBits(
                     new Rectangle(0, 0, IMG_WIDTH, IMG_HEIGHT),
                     ImageLockMode.WriteOnly,
                     writeBuffer.PixelFormat);
 
-                //Copiamos los pixeles IR al bitmap
                 System.Runtime.InteropServices.Marshal.Copy(irPixels, 0, bmpData.Scan0, irPixels.Length);
                 writeBuffer.UnlockBits(bmpData);
 
-                // Cambiar al buffer recién escrito
                 Bitmap displayBuffer = writeBuffer;
                 useIrA = !useIrA;
 
@@ -339,76 +373,51 @@ namespace KinectTracker
                 }
                 catch { }
 
-
                 // === 3. Procesar Depth ===
-                // (todo lo que tenías en Sensor_DepthFrameReady DESPUÉS del CopyPixelDataTo)
-                // - Bucle conversión depth a visualización
-                // - Actualizar depthPictureBox
 
-                //Pasamos depth (16 bits) a imagen visualizable (8 bits BGRA)
                 for (int i = 0; i < IMG_WIDTH * IMG_HEIGHT; i++)
                 {
                     short pixel = depthData[i];
-                    int depthInMm = pixel >> 3; //Shift 3 bits a la derecha para obtener distancia real en mm
+                    int depthInMm = (pixel & 0xFFFF) >> 3;
 
                     byte intensity;
                     if (depthInMm < MIN_DEPTH || depthInMm > MAX_DEPTH)
                     {
-                        intensity = 0; //Fuera de rango = negro
+                        intensity = 0;
                     }
                     else
                     {
-                        //Mapeo: cerca=blanco (255), lejos=oscuro (0)
-                        //Normalizamos al rango 0-255 invertido
                         double normalized = 1.0 - ((double)(depthInMm - MIN_DEPTH) / (MAX_DEPTH - MIN_DEPTH));
                         intensity = (byte)(normalized * 255);
                     }
 
-                    depthPixels[i * 4] = intensity;     //Blue
-                    depthPixels[i * 4 + 1] = intensity; //Green
-                    depthPixels[i * 4 + 2] = intensity; //Red
-                    depthPixels[i * 4 + 3] = 255;       //Alpha
+                    depthPixels[i * 4] = intensity;
+                    depthPixels[i * 4 + 1] = intensity;
+                    depthPixels[i * 4 + 2] = intensity;
+                    depthPixels[i * 4 + 3] = 255;
                 }
 
-                // Escribir en el buffer que NO está siendo mostrado (mismo principio que IR)
                 Bitmap writeDepthBuffer = useDepthA ? depthBufferA : depthBufferB;
 
-                BitmapData bmpDataDepth = writeBuffer.LockBits( //Acceso directo a memoria del bitmap
+                BitmapData bmpDataDepth = writeDepthBuffer.LockBits(
                     new Rectangle(0, 0, IMG_WIDTH, IMG_HEIGHT),
                     ImageLockMode.WriteOnly,
-                    writeBuffer.PixelFormat);
+                    writeDepthBuffer.PixelFormat);
 
-                //Copiamos los pixeles Depth al bitmap
-                System.Runtime.InteropServices.Marshal.Copy(depthPixels, 0, bmpData.Scan0, depthPixels.Length);
-                writeBuffer.UnlockBits(bmpData);
+                System.Runtime.InteropServices.Marshal.Copy(depthPixels, 0, bmpDataDepth.Scan0, depthPixels.Length);
+                writeDepthBuffer.UnlockBits(bmpDataDepth);
 
-                // Cambiar al buffer recién escrito
-                Bitmap displayDepthBuffer = writeBuffer;
+                Bitmap displayDepthBuffer = writeDepthBuffer;
                 useDepthA = !useDepthA;
 
                 try
                 {
                     depthPictureBox.Invoke((MethodInvoker)delegate
                     {
-                        depthPictureBox.Image = displayBuffer;
+                        depthPictureBox.Image = displayDepthBuffer;
                     });
                 }
                 catch { }
-
-            }
-        }
-
-        static void Sensor_DepthFrameReady(object sender, DepthImageFrameReadyEventArgs e)
-        {
-            using (DepthImageFrame frame = e.OpenDepthImageFrame())
-            {
-                if (frame == null) return; //Verificamos que hay frame y ventana
-
-                if (depthPictureBox == null || depthPictureBox.IsDisposed || !depthPictureBox.IsHandleCreated)
-                    return;
-
-                frame.CopyPixelDataTo(depthData); //Cada pixel son 16 bits
-                //Bits 0-2 = índice de jugador (no usado), bits 3-15 = distancia en mm
             }
         }
     }
