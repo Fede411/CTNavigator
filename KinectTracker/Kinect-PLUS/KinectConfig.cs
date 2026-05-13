@@ -27,7 +27,6 @@ namespace KinectTracker{
             this.viewer = viewer;
 
         }
-
         public bool Initialize()
         {
             if (KinectSensor.KinectSensors.Count == 0)
@@ -104,7 +103,7 @@ namespace KinectTracker{
         private void ProcessIR() {
             for (int i = 0; i < Constants.IMG_WIDTH * Constants.IMG_HEIGHT; i++)
             {
-                int irValue = colorPixels[i * 2] | (colorPixels[i * 2 + 1] << 8); //Combina 2 bits
+                int irValue = colorPixels[i * 2] | (colorPixels[i * 2 + 1] << 8); //Combina 2 bytes
                 byte intensity = (byte)(irValue >> 8); //Dividir entre 256 para ir de 16 a 8 bits 
 
                 if (intensity < Constants.THRESHOLD)

@@ -187,9 +187,25 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         connBox.collapsed = True
         setupLayout.addWidget(connBox)
         connForm = qt.QFormLayout(connBox)
+
+        # PLUS/OpenIGTLink - todavía pendiente
         connNote = qt.QLabel("PLUS / OpenIGTLink connection — coming soon.")
         connNote.setStyleSheet("color: gray; font-size: 11px;")
         connForm.addRow(connNote)
+
+        # Surgeon display - ventana secundaria con las 3 vistas duplicadas
+        self._secondaryWindow = None   # referencia a la ventana, None = no abierta
+        self.surgeonDisplayBtn = qt.QPushButton("🖥  Open surgeon display")
+        self.surgeonDisplayBtn.clicked.connect(self._onToggleSurgeonDisplay)
+        connForm.addRow(self.surgeonDisplayBtn)
+
+        surgeonNote = qt.QLabel(
+            "Opens a secondary window mirroring the three slice views. "
+            "If a second monitor is detected it launches fullscreen there."
+        )
+        surgeonNote.setStyleSheet("color: gray; font-size: 11px;")
+        surgeonNote.setWordWrap(True)
+        connForm.addRow(surgeonNote)
 
         #Visualizador de las coordenadas - por ahora es un input manual
         starGroup = qt.QGroupBox("COORDINATE VISUALIZER")
@@ -468,6 +484,23 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         if vol is None:
             return
         slicer.util.setSliceViewerLayers(background=vol, backgroundOpacity=value)
+        
+    def _onToggleSurgeonDisplay(self):
+        """
+        Toggle de la ventana secundaria para el cirujano.
+        Si está cerrada, la abre (y la envía al 2º monitor si existe).
+        Si está abierta, la cierra.
+        """
+        if self._secondaryWindow is not None:
+            # Ya existe una ventana abierta → cerrar
+            self._secondaryWindow.close()
+            self._secondaryWindow = None
+            self.surgeonDisplayBtn.setText("🖥  Open surgeon display")
+            return
+
+        # Crear ventana nueva
+        self._secondaryWindow = self._buildSurgeonWindow()
+        self.surgeonDisplayBtn.setText("✖  Close surgeon display")
 
     # ── Handler principal ─────────────────────────────────────────────────
 
@@ -500,8 +533,60 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         )
         self._readBalls()
         self.logic.jumpToRAS(pen_ct)
+        
+    def _buildSurgeonWindow(self):
+        """
+        Crea una QMainWindow con tres qMRMLSliceWidget (Red/Yellow/Green)
+        que comparten los slice nodes de las vistas principales, de modo
+        que cualquier cambio en el layout del operador se refleja aquí.
 
+        Si hay un segundo monitor, la ventana se lanza allí en fullscreen.
+        """
+        win = qt.QMainWindow()
+        win.setWindowTitle("CT Navigator — Surgeon display")
 
+        # Widget central con las 3 vistas en horizontal
+        central = qt.QWidget()
+        hbox    = qt.QHBoxLayout(central)
+        hbox.setContentsMargins(0, 0, 0, 0)
+        hbox.setSpacing(2)
+
+        layoutManager = slicer.app.layoutManager()
+
+        for color in ("Red", "Yellow", "Green"):
+            # Obtenemos el SliceNode que ya existe en la escena principal
+            sliceNode = slicer.mrmlScene.GetFirstNodeByName(color)
+
+            # Creamos un nuevo widget que apunta a ese mismo nodo
+            sw = slicer.qMRMLSliceWidget()
+            sw.setMRMLScene(slicer.mrmlScene)
+            sw.setMRMLSliceNode(sliceNode)
+
+            hbox.addWidget(sw)
+
+        win.setCentralWidget(central)
+
+        # Decidir dónde mostrar la ventana
+        screens = qt.QGuiApplication.screens()
+        if len(screens) > 1:
+            # Hay un 2º monitor → fullscreen allí
+            secondaryScreen = screens[1]
+            geom = secondaryScreen.geometry()
+            win.move(geom.x(), geom.y())
+            win.showFullScreen()
+        else:
+            # Solo 1 monitor → ventana normal, tamaño razonable
+            win.resize(1200, 400)
+            win.show()
+
+        return win
+
+    def cleanup(self):
+        """Se llama cuando Slicer descarga el módulo. Cerramos la ventana
+        secundaria si estuviera abierta para evitar widgets huérfanos."""
+        if getattr(self, "_secondaryWindow", None) is not None:
+            self._secondaryWindow.close()
+            self._secondaryWindow = None
 # ─────────────────────────────────────────────────────────────────────────────
 # Logic
 # ─────────────────────────────────────────────────────────────────────────────
