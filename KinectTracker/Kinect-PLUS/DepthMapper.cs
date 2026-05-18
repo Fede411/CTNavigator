@@ -1,4 +1,6 @@
 ﻿using Microsoft.Kinect;
+using System.Collections.Generic;
+using System.Data.SqlTypes;
 
 namespace KinectTracker
 {
@@ -11,20 +13,27 @@ namespace KinectTracker
             this.sensor = sensor;
         }
 
-
         public int FindValidDepth(int x, int y, short[] depthData)
         {
-            //Busca Depth válido alrededor del centroide (x,y) en un radio definido buscando el MÍNIMO válido
-            //(las esferas reflectivas saturan el sensor, pero el borde sí suele dar depth válido)
+            // Búsqueda en corona (ring search) alrededor del centroide, excluye el centro saturado por IR,
+            // muestrea el borde de la esfera
+            // Técnica basada en Keller 2023 / STTAR (Martin-Gomez 2023)
             int depthMm = int.MaxValue;
+            List<int> samples = new List<int>();
 
-            for (int dy = -Constants.SEARCH_RADIUS; dy <= Constants.SEARCH_RADIUS; dy++)
+            for (int dy = -Constants.DEPTH_R_OUTER; dy <= Constants.DEPTH_R_OUTER; dy++)
             {
-                for (int dx = -Constants.SEARCH_RADIUS; dx <= Constants.SEARCH_RADIUS; dx++)
+                for (int dx = -Constants.DEPTH_R_OUTER; dx <= Constants.DEPTH_R_OUTER; dx++)
                 {
+                    int distSq = dx*dx + dy*dy;
+
+                    if (distSq < Constants.DEPTH_R_INNER * Constants.DEPTH_R_INNER || distSq > Constants.DEPTH_R_OUTER * Constants.DEPTH_R_OUTER)
+                        continue;
+
                     int sx = x + dx;
                     int sy = y + dy;
-                    if (sx < 0 || sx >= Constants.IMG_WIDTH || sy < 0 || sy >= Constants.IMG_HEIGHT) continue;
+
+                    if (sx < 0 || sy < 0 || sx >= Constants.IMG_WIDTH  || sy >= Constants.IMG_HEIGHT) continue;
 
                     int sIdx = sy * Constants.IMG_WIDTH + sx;
                     int rawSample = depthData[sIdx] & 0xFFFF; //Forzar interpretación sin signo
@@ -32,18 +41,34 @@ namespace KinectTracker
 
                     if (sample >= Constants.MIN_DEPTH && sample <= Constants.MAX_DEPTH && sample < depthMm)
                     {
-                        depthMm = sample;
+                        samples.Add(sample);
                     }
+
                 }
             }
 
-            if (depthMm == int.MaxValue)
+            if (samples.Count < Constants.DEPTH_MIN_SAMPLES)
                 return -1;
-            //Validar depth
-            //if (depthMm == int.MaxValue || depthMm < Constants.MIN_DEPTH || depthMm > Constants.MAX_DEPTH)
-              //  continue;
 
-            return depthMm;
+            samples.Sort();
+            //return samples[samples.Count/2];
+
+            int zMin = samples[0];
+
+            // Contar cuántos samples están cerca del frente (validación extra)
+            int clusterCount = 0;
+            for (int i = 0; i < samples.Count; i++)
+            {
+                if (samples[i] <= zMin + 100)
+                    clusterCount++;
+                else
+                    break;
+            }
+
+            if (clusterCount < Constants.DEPTH_MIN_SAMPLES)
+                return -1;
+
+            return zMin;
         }
 
         //Convierte (x, y) en pixeles + depth en mm a coordenadas 3D del mundo
@@ -53,6 +78,18 @@ namespace KinectTracker
                 new DepthImagePoint { X = x, Y = y, Depth = depthMm }
             );
 
+
+        }
+
+        public DepthImagePoint ConvertTo2D(float x, float y, float z)
+        {
+            SkeletonPoint sp = new SkeletonPoint();
+            sp.X = x / 1000f;
+            sp.Y = y / 1000f;
+            sp.Z = z / 1000f;
+
+            return sensor.CoordinateMapper.MapSkeletonPointToDepthPoint(
+                sp, DepthImageFormat.Resolution640x480Fps30);
         }
 
     }

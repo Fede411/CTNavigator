@@ -6,13 +6,18 @@
         public const int IMG_HEIGHT = 480;
 
         //Valor RGB para solo ver las esferas
-        public const int THRESHOLD = 230;
+        public const int THRESHOLD = 250;
 
-        public const int MIN_DEPTH = 800;   //mm
-        public const int MAX_DEPTH = 4000;  //mm
+        public const int MIN_DEPTH = 500;   //mm
+        public const int MAX_DEPTH = 1500;  //mm
 
         //pixeles para buscar depth válido alrededor del centroide
-        public const int SEARCH_RADIUS = 30;
+        public const int SEARCH_RADIUS = 15;
+
+        //Peripherical sampling 
+        public const int DEPTH_R_INNER = 4;
+        public const int DEPTH_R_OUTER = 40;     
+        public const int DEPTH_MIN_SAMPLES = 3;  
 
         //Parámetros de detección de blobs
         public const int MIN_BLOB_AREA = 0; //Píxeles mínimos, 0 para aumentar sensibilidad a larga distancia (+1m)

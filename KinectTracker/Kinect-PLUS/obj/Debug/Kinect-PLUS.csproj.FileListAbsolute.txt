@@ -130,3 +130,5 @@ C:\TFM\CTNavigator-clone\KinectTracker\Kinect-PLUS\obj\Debug\Kinect-PLUS.csproj.
 C:\TFM\CTNavigator-clone\KinectTracker\Kinect-PLUS\obj\Debug\Kinect-P.861BA49A.Up2Date
 C:\TFM\CTNavigator-clone\KinectTracker\Kinect-PLUS\obj\Debug\Kinect-PLUS.exe
 C:\TFM\CTNavigator-clone\KinectTracker\Kinect-PLUS\obj\Debug\Kinect-PLUS.pdb
+C:\TFM\CTNavigator-clone\KinectTracker\Kinect-PLUS\bin\Debug\MathNet.Numerics.dll
+C:\TFM\CTNavigator-clone\KinectTracker\Kinect-PLUS\bin\Debug\MathNet.Numerics.xml

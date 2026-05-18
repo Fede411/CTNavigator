@@ -26,9 +26,9 @@ namespace KinectTracker
 
             System.Runtime.InteropServices.Marshal.Copy(grayPixels, 0, irMat.DataPointer, grayPixels.Length); //Copiamos al mat
 
-            //Morphology open
-            Mat kernel = CvInvoke.GetStructuringElement(ElementShape.Ellipse, new Size(3, 3), new Point(-1, -1));
-            CvInvoke.MorphologyEx(irMat, irMat, MorphOp.Open, kernel, new Point(-1, -1), 1, BorderType.Default, new MCvScalar());
+            //Morphology close
+            Mat kernel = CvInvoke.GetStructuringElement(ElementShape.Ellipse, new Size(4, 4), new Point(-1, -1));
+            CvInvoke.MorphologyEx(irMat, irMat, MorphOp.Close, kernel, new Point(-1, -1), 1, BorderType.Default, new MCvScalar());
 
             //Contornos
             VectorOfVectorOfPoint contours = new VectorOfVectorOfPoint();
