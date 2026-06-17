@@ -5,23 +5,23 @@ using System.Drawing;
 using System.Numerics;
 
 namespace KinectTracker{
-	public class KinectConfig
-	{
+    public class KinectConfig
+    {
         //Objetos de otras clases
         private KinectSensor sensor;
         private ViewerWindow viewer;
         private DepthMapper depthMapper;
         private BlobDetector blobDetector;
         private KalmanPoseFilter kalmanFilter;
+        private ToolTipProcessor toolTipProcessor;
+        private OpenIGTLinkServer igtlServer;
 
         //Variables de detección y estadísticas
         private int framesProcessed = 0;
         private int[] detectionHistogram = new int[10];
         private RigidBodyModel instrumentModel;
-        private int matchesSuccessful = 0;
-        private Vector3 lastToolTip = Vector3.Zero;
-        private bool hasLastPose = false;
-
+        private RigidBodyModel markerModel;
+        
         //Streams arrays vacios para almacenar los datos del Kinect y luego convertirlos a bitmaps
         private byte[] colorPixels;
         private byte[] irPixels;
@@ -33,11 +33,11 @@ namespace KinectTracker{
         List<Vector3> Detected3DPoints = new List<Vector3>();
         private readonly object centroidsLock = new object();
 
-        public KinectConfig(ViewerWindow viewer) { 
+        public KinectConfig(ViewerWindow viewer) {
             this.viewer = viewer;
 
         }
-        public bool Initialize()
+        public bool Start()
         {
             if (KinectSensor.KinectSensors.Count == 0)
             {
@@ -53,6 +53,10 @@ namespace KinectTracker{
             depthMapper = new DepthMapper(sensor);
             blobDetector = new BlobDetector();
             kalmanFilter = new KalmanPoseFilter();
+            toolTipProcessor = new ToolTipProcessor(kalmanFilter);
+            igtlServer = new OpenIGTLinkServer(18944);
+            igtlServer.Start();
+
 
             //Habilitamos los streams de IR y Depth con la resolución y framerate deseados
             sensor.ColorStream.Enable(ColorImageFormat.InfraredResolution640x480Fps30);
@@ -72,6 +76,7 @@ namespace KinectTracker{
                 Console.WriteLine("Kinect iniciada - Streams IR + Depth activos");
                 Console.WriteLine($"ID: {sensor.UniqueKinectId}");
                 instrumentModel = KnownModels.CreateInstrument();
+                markerModel = KnownModels.CreateMarker();
                 return true;
             }
             catch (Exception ex)
@@ -94,11 +99,15 @@ namespace KinectTracker{
                 }
 
                 int framesN4 = detectionHistogram[4];
-                double matchPctGlobal = framesProcessed > 0 ? 100.0 * matchesSuccessful / framesProcessed : 0;
-                double matchPctN4 = framesN4 > 0 ? 100.0 * matchesSuccessful / framesN4 : 0;
-                Console.WriteLine($"Matches exitosos: {matchesSuccessful} ({matchPctGlobal:F1}% global, {matchPctN4:F1}% de n=4)");
+                double matchPctGlobal = framesProcessed > 0 ? 100.0 * toolTipProcessor.MatchesSuccessful / framesProcessed : 0;
+                double matchPctN4 = framesN4 > 0 ? 100.0 * toolTipProcessor.MatchesSuccessful / framesN4 : 0;
+                Console.WriteLine($"Matches exitosos: {toolTipProcessor.MatchesSuccessful} ({matchPctGlobal:F1}% global, {matchPctN4:F1}% de n=4)");
+                Console.WriteLine($"Partial matches (3/4): {toolTipProcessor.PartialMatchesSuccessful}");
+                Console.WriteLine($"Total poses: {toolTipProcessor.MatchesSuccessful + toolTipProcessor.PartialMatchesSuccessful} ({100.0 * (toolTipProcessor.MatchesSuccessful + toolTipProcessor.PartialMatchesSuccessful) / framesProcessed:F1}% global)");
+                Console.WriteLine($"Marcador detectado: {toolTipProcessor.MarkerMatchesSuccessful} ({100.0 * toolTipProcessor.MarkerMatchesSuccessful / framesProcessed:F1}% global)");
 
                 sensor.Stop();
+                igtlServer.Stop();
             }
         }
 
@@ -119,62 +128,18 @@ namespace KinectTracker{
                 depthFrame.CopyPixelDataTo(depthData);
 
                 ProcessIR();
-                ProcessDepth();
+                DepthProcessor.Process(depthData, depthPixels, viewer);
 
                 //sw.Stop();
                 //if (sw.ElapsedMilliseconds > 30)
-                    //Console.WriteLine($"[SLOW] Frame: {sw.ElapsedMilliseconds}ms");
+                //Console.WriteLine($"[SLOW] Frame: {sw.ElapsedMilliseconds}ms");
             }
         }
 
-        private void ProcessIR() {
-            for (int i = 0; i < Constants.IMG_WIDTH * Constants.IMG_HEIGHT; i++)
-            {
-                int irValue = colorPixels[i * 2] | (colorPixels[i * 2 + 1] << 8); //Combina 2 bytes
-                byte intensity = (byte)(irValue >> 8); //Dividir entre 256 para ir de 16 a 8 bits 
-
-                if (intensity < Constants.THRESHOLD)
-                {
-                    irPixels[i * 4] = 0; //negro
-                    irPixels[i * 4 + 1] = 0;
-                    irPixels[i * 4 + 2] = 0;
-                }
-                else
-                {
-                    irPixels[i * 4] = intensity; //Blue
-                    irPixels[i * 4 + 1] = intensity; //Green
-                    irPixels[i * 4 + 2] = intensity; //Red
-                }
-
-                irPixels[i * 4 + 3] = 255; //Alpha
-            }
-
-            //Detección de blob
-            List<PointF> blobCentroids = blobDetector.DetectBlobs(irPixels);
-
-            //Para cada centroide, calcular depth y 3D
-            List<PointF> currentCentroids = new List<PointF>();
-            List<Vector3> current3DPoints = new List<Vector3>();
-
-            foreach (PointF centroid in blobCentroids)
-            {
-                int xInt = (int)centroid.X;
-                int yInt = (int)centroid.Y;
-
-                //Validar dentro de imagen
-                if (xInt < 0 || xInt >= Constants.IMG_WIDTH || yInt < 0 || yInt >= Constants.IMG_HEIGHT)
-                    continue;
-
-                //Buscar depth válido y convertir a 3D
-                int depthMm = depthMapper.FindValidDepth(xInt, yInt, depthData);
-                if (depthMm < 0) continue;
-                SkeletonPoint world = depthMapper.ConvertTo3D(xInt, yInt, depthMm);
-                Vector3 worldMm = new Vector3(world.X * 1000f, world.Y * 1000f, world.Z * 1000f);
-
-                //Guardar 2D y 3D
-                currentCentroids.Add(centroid);
-                current3DPoints.Add(worldMm);
-            }
+        private void ProcessIR()
+        {
+            var (currentCentroids, current3DPoints) = IRProcessor.Process(
+                colorPixels, irPixels, depthData, blobDetector, depthMapper);
 
             int n = current3DPoints.Count;
             if (n < detectionHistogram.Length)
@@ -182,84 +147,24 @@ namespace KinectTracker{
             else
                 detectionHistogram[detectionHistogram.Length - 1]++;
 
-            // Pasar la lista de Vector3 a array para el matcher
-            Vector3[] detectionsArr = current3DPoints.ToArray();
+            // Matching y poses
+            toolTipProcessor.Process(currentCentroids, current3DPoints,
+                irPixels, instrumentModel, markerModel, depthMapper);
 
-            // Llamar al matcher con una tolerancia dada
-            MatchResult matchResult = GeometryMatcher.Match(detectionsArr, instrumentModel, 10.0f); //7.5 cuando detecte bien n=4
+            if (toolTipProcessor.MarkerFound)
+                igtlServer.SendTransform("MarkerToTracker", toolTipProcessor.MarkerR, toolTipProcessor.MarkerT);
 
-            if (matchResult.Success)
-            {
+            if (toolTipProcessor.ToolFound)
+                igtlServer.SendTransform("ToolToTracker", toolTipProcessor.ToolR, toolTipProcessor.ToolT);
 
-                // Calcular pose 6DOF
-                var pose = PoseEstimator.ComputePose(
-                    instrumentModel.LocalSpheres,
-                    detectionsArr,
-                    matchResult.Correspondences);
-
-                // Posición del tooltip (origen del modelo) transformada al espacio del Kinect
-                var toolTipLocal = MathNet.Numerics.LinearAlgebra.Vector<double>.Build.Dense(
-                    new double[] { 0, 0, 0 }); // tooltip es el origen del sistema local
-                var toolTipKinect = pose.R * toolTipLocal;
-
-                Vector3 toolTip = new Vector3(
-                    (float)toolTipKinect[0] + pose.t.X,
-                    (float)toolTipKinect[1] + pose.t.Y,
-                    (float)toolTipKinect[2] + pose.t.Z);
-
-                Matrix4x4 rotMatrix = new Matrix4x4(
-                    (float)pose.R[0, 0], (float)pose.R[0, 1], (float)pose.R[0, 2], 0,
-                    (float)pose.R[1, 0], (float)pose.R[1, 1], (float)pose.R[1, 2], 0,
-                    (float)pose.R[2, 0], (float)pose.R[2, 1], (float)pose.R[2, 2], 0,
-                    0, 0, 0, 1);
-
-                Quaternion rotation = Quaternion.CreateFromRotationMatrix(rotMatrix);
-                kalmanFilter.Update(toolTip, rotation, DateTime.Now);
-
-                if (pose.error < 10.0f)
-                {
-                    // Filtro de consistencia temporal
-                    bool poseValid = true;
-                    if (hasLastPose)
-                    {
-                        float jump = Vector3.Distance(toolTip, lastToolTip);
-                        if (jump > 50.0f)  // más de 50mm entre frames = espejado o error
-                            poseValid = false;
-                    }
-
-                    if (poseValid)
-                    {
-                        matchesSuccessful++;
-                        lastToolTip = toolTip;
-                        hasLastPose = true;
-
-                        Console.WriteLine($"  MATCH! residual={matchResult.Residual:F2}mm, pose_error={pose.error:F2}mm");
-                        Console.WriteLine($"    ToolTip: ({toolTip.X:F1}, {toolTip.Y:F1}, {toolTip.Z:F1}) mm");
-
-                        // Convertir tooltip 3D a 2D
-                        var tt2D = depthMapper.ConvertTo2D(toolTip.X, toolTip.Y, toolTip.Z);
-
-                        // Dibujar líneas desde cada esfera detectada al tooltip
-                        for (int i = 0; i < currentCentroids.Count; i++)
-                        {
-                            var c = currentCentroids[i];
-                            ImageUtils.DrawLine(irPixels, (int)c.X, (int)c.Y, tt2D.X, tt2D.Y, 255, 255, 0);
-                        }
-
-                        // Dibujar el tooltip como círculo rojo
-                        ImageUtils.DrawCircle(irPixels, tt2D.X, tt2D.Y, 5, 255, 0, 0);
-                    }
-                }
-            }
-
-            //Guardar resultados (thread-safe)
+            // Guardar resultados
             lock (centroidsLock)
             {
                 DetectedCentroids = currentCentroids;
                 Detected3DPoints = current3DPoints;
             }
 
-            //Debug: mostrar coordenadas
+            // Debug
             if (currentCentroids.Count > 0)
             {
                 Console.WriteLine($"\n[{DateTime.Now:HH:mm:ss}] Detectados {currentCentroids.Count} blobs:");
@@ -270,40 +175,14 @@ namespace KinectTracker{
                     Console.WriteLine($"  2D: ({c.X:F1}, {c.Y:F1})  3D: ({p.X:F0}, {p.Y:F0}, {p.Z:F0}) mm");
                 }
             }
-            //Dibujar círculos sobre los centroides detectados
+
             foreach (PointF centroid in currentCentroids)
             {
                 ImageUtils.DrawCircle(irPixels, (int)centroid.X, (int)centroid.Y, 8, 0, 255, 0);
             }
             viewer.UpdateIRImage(irPixels);
-
-        }
-
-        private void ProcessDepth() {
-            for (int i = 0; i < Constants.IMG_WIDTH * Constants.IMG_HEIGHT; i++)
-            {
-                short pixel = depthData[i];
-                int depthInMm = (pixel & 0xFFFF) >> 3;
-
-                byte intensity;
-                if (depthInMm < Constants.MIN_DEPTH || depthInMm > Constants.MAX_DEPTH)
-                {
-                    intensity = 0;
-                }
-                else
-                {
-                    double normalized = 1.0 - ((double)(depthInMm - Constants.MIN_DEPTH) / (Constants.MAX_DEPTH - Constants.MIN_DEPTH));
-                    intensity = (byte)(normalized * 255);
-                }
-
-                depthPixels[i * 4] = intensity;
-                depthPixels[i * 4 + 1] = intensity;
-                depthPixels[i * 4 + 2] = intensity;
-                depthPixels[i * 4 + 3] = 255;
-            }
-
-            viewer.UpdateDepthImage(depthPixels);
         }
 
     }
+
 }

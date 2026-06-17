@@ -18,14 +18,14 @@ namespace KinectTracker
         }
 
         public static RigidBodyModel CreateMarker() {
-            throw new NotImplementedException("Aún falta por diseñar este modelo");
-            //Vector3 pointA1 = new Vector3(0,0,0);
-            //Vector3 pointB1 = new Vector3(0,0,0);
-            //Vector3 pointC1 = new Vector3(0, 0, 0);
+            // new NotImplementedException("Aún falta por diseñar este modelo");
+            Vector3 pointA1 = new Vector3(12.3193f, 3.206f, 0);
+            Vector3 pointB1 = new Vector3(-13.6596f, 4.397f, 15);
+            Vector3 pointC1 = new Vector3(1.3403f, -7.603f, -15);
 
-            //Vector3[] markPoints =  { pointA1, pointB1, pointC1};
+            Vector3[] markPoints =  { pointA1, pointB1, pointC1};
 
-            //return new RigidBodyModel("Reference Marker", markPoints, null);
+            return new RigidBodyModel("Reference Marker", markPoints, null);
 
         }
     }

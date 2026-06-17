@@ -14,7 +14,7 @@ namespace KinectTracker
             Matrix<double> R = Matrix<double>.Build.DenseIdentity(3);
             Vector3 t = Vector3.Zero;
 			float error = 0.0f;
-            int n = modelPoints.Length;
+            int n = modelPoints.Length; 
 
             //Para poder sacar los centroides y matchear, primero ordenamos los puntos detectados
             //según el orden de los puntos del modelo

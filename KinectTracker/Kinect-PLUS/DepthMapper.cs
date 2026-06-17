@@ -1,4 +1,5 @@
 ﻿using Microsoft.Kinect;
+using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
 
@@ -13,21 +14,24 @@ namespace KinectTracker
             this.sensor = sensor;
         }
 
-        public int FindValidDepth(int x, int y, short[] depthData)
+        public int FindValidDepth(int x, int y, short[] depthData, float blobRadius)
         {
             // Búsqueda en corona (ring search) alrededor del centroide, excluye el centro saturado por IR,
-            // muestrea el borde de la esfera
-            // Técnica basada en Keller 2023 / STTAR (Martin-Gomez 2023)
+            // muestrea el borde de la esfera; Técnica basada en Keller 2023 / STTAR (Martin-Gomez 2023), modificada con radio dinámico según el tamaño del blob
             int depthMm = int.MaxValue;
             List<int> samples = new List<int>();
 
-            for (int dy = -Constants.DEPTH_R_OUTER; dy <= Constants.DEPTH_R_OUTER; dy++)
+            int depth_r_inner = Math.Max(2, (int)(blobRadius * 0.6f));
+
+            int depth_r_outer = (int)(blobRadius * 1.5f) +3;
+
+            for (int dy = -depth_r_outer; dy <= depth_r_outer; dy++)
             {
-                for (int dx = -Constants.DEPTH_R_OUTER; dx <= Constants.DEPTH_R_OUTER; dx++)
+                for (int dx = -depth_r_outer; dx <= depth_r_outer; dx++)
                 {
                     int distSq = dx*dx + dy*dy;
 
-                    if (distSq < Constants.DEPTH_R_INNER * Constants.DEPTH_R_INNER || distSq > Constants.DEPTH_R_OUTER * Constants.DEPTH_R_OUTER)
+                    if (distSq < depth_r_inner * depth_r_inner || distSq > depth_r_outer * depth_r_outer)
                         continue;
 
                     int sx = x + dx;

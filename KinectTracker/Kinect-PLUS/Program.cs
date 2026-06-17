@@ -16,7 +16,7 @@ namespace KinectTracker
             ViewerWindow viewer = new ViewerWindow();
             KinectConfig kinect = new KinectConfig(viewer);
 
-            if (!kinect.Initialize())
+            if (!kinect.Start())
             {
                 Console.WriteLine("\nNo se pudo iniciar Kinect. Presiona ENTER");
                 Console.ReadLine();

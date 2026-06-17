@@ -110,6 +110,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Blob2DInfo.cs" />
     <Compile Include="BlobDetector.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="DepthMapper.cs" />
@@ -118,7 +119,11 @@
     <Compile Include="KalmanPoseFilter.cs" />
     <Compile Include="KinectConfig.cs" />
     <Compile Include="KnownModels.cs" />
+    <Compile Include="OpenIGTLinkServer.cs" />
     <Compile Include="PoseEstimator.cs" />
+    <Compile Include="ProcessDepth.cs" />
+    <Compile Include="ProcessIR.cs" />
+    <Compile Include="ProcessTooltip.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RigidBodyModel.cs" />

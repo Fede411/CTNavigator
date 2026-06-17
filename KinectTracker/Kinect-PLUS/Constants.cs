@@ -15,15 +15,19 @@
         public const int SEARCH_RADIUS = 15;
 
         //Peripherical sampling 
-        public const int DEPTH_R_INNER = 4;
-        public const int DEPTH_R_OUTER = 40;     
         public const int DEPTH_MIN_SAMPLES = 3;  
 
         //Parámetros de detección de blobs
         public const int MIN_BLOB_AREA = 0; //Píxeles mínimos, 0 para aumentar sensibilidad a larga distancia (+1m)
-        public const int MAX_BLOB_AREA = 1000;
+        public const int MAX_BLOB_AREA = 1000; //Píxeles máximos, vamos a siempre tener una distancia prudente
         public const double MIN_CIRCULARITY = 0.5; //Esferas son redondas (~1.0), rechaza líneas/ruido
         public const double MIN_ASPECT = 0.6; //Aspect ratio mínimo (rechaza líneas alargadas, como herramientas)
         public const double MAX_ASPECT = 1.7;
+
+        public const float FOCAL_PX = 585f;   // focal IR efectiva; refinar con el barrido / intrínsecos
+        public const float SPHERE_MM = 12.5f;
+        public const int Z_SIZE_TOL = 130;   // mm; generoso porque Z_size es grosero
+
+
     }
 }

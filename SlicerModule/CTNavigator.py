@@ -180,7 +180,7 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         readBtn = qt.QPushButton("↺  Read sphere position")
         readBtn.clicked.connect(self._readBalls)
         sceneForm.addRow(readBtn)
-
+        
         #CONNECTION
         connBox = ctk.ctkCollapsibleButton()
         connBox.text = "CONNECTION"
@@ -188,9 +188,22 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         setupLayout.addWidget(connBox)
         connForm = qt.QFormLayout(connBox)
 
-        # PLUS/OpenIGTLink - todavía pendiente
-        connNote = qt.QLabel("PLUS / OpenIGTLink connection — coming soon.")
+        self.trackBtn = qt.QPushButton("▶  Start tracking")
+        self.trackBtn.setCheckable(True)
+        self.trackBtn.setStyleSheet(
+            "QPushButton { background: #27ae60; color: white; font-size: 13px;"
+            " padding: 8px; border-radius: 4px; }"
+            "QPushButton:checked { background: #e74c3c; }"
+        )
+        self.trackBtn.toggled.connect(self._onTrackToggle)
+        connForm.addRow(self.trackBtn)
+
+        connNote = qt.QLabel(
+            "Reads MarkerToTracker and ToolToTracker from the OpenIGTLink\n"
+            "connector and updates the instrument position in the CT in real time."
+        )
         connNote.setStyleSheet("color: gray; font-size: 11px;")
+        connNote.setWordWrap(True)
         connForm.addRow(connNote)
 
         # Surgeon display - ventana secundaria con las 3 vistas duplicadas
@@ -587,6 +600,60 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         if getattr(self, "_secondaryWindow", None) is not None:
             self._secondaryWindow.close()
             self._secondaryWindow = None
+            
+    def _onTrackToggle(self, checked):
+        if checked:
+            # Verificar StarBalls
+            balls = self.ballsSelector.currentNode()
+            if balls is None or balls.GetNumberOfControlPoints() < 3:
+                slicer.util.warningDisplay("Select StarBalls (3 points) before tracking.")
+                self.trackBtn.setChecked(False)
+                return
+
+            # Verificar que el node del instrumento ya llega
+            toolNode = slicer.mrmlScene.GetFirstNodeByName("ToolToTracker")
+            if toolNode is None:
+                slicer.util.warningDisplay(
+                    "ToolToTracker not found. Make sure the OpenIGTLink "
+                    "connector is active and the Kinect is detecting the instrument."
+                )
+                self.trackBtn.setChecked(False)
+                return
+
+            # Suscribir el observer al node del instrumento
+            self.trackBtn.setText("■  Stop tracking")
+            self._toolObserverTag = toolNode.AddObserver(
+                slicer.vtkMRMLTransformNode.TransformModifiedEvent,
+                self._onToolMoved
+            )
+        else:
+            self.trackBtn.setText("▶  Start tracking")
+            # Quitar el observer
+            toolNode = slicer.mrmlScene.GetFirstNodeByName("ToolToTracker")
+            if toolNode is not None and hasattr(self, "_toolObserverTag"):
+                toolNode.RemoveObserver(self._toolObserverTag)
+
+
+    def _onToolMoved(self, caller, event):
+        balls = self.ballsSelector.currentNode()
+        if balls is None:
+            return
+
+        T_star2tracker = self.logic._readTransform("MarkerToTracker")
+        T_pen2tracker  = self.logic._readTransform("ToolToTracker")
+
+        if T_star2tracker is None or T_pen2tracker is None:
+            return
+
+        try:
+            T_pen2ct = self.logic.computePenInCT(balls, T_star2tracker, T_pen2tracker)
+            pos = T_pen2ct[:3, 3]
+            self.penCtLabel.setText(
+                f"R={pos[0]:+.1f}  A={pos[1]:+.1f}  S={pos[2]:+.1f}"
+            )
+            self.logic.jumpToRAS(pos)
+        except Exception as e:
+            self.errorLabel.setText(f"⚠ Error: {e}")
 # ─────────────────────────────────────────────────────────────────────────────
 # Logic
 # ─────────────────────────────────────────────────────────────────────────────
@@ -609,25 +676,14 @@ class CTNavigatorLogic(ScriptedLoadableModuleLogic):
         La cadena no cambia.
     """
 
-    def computePenInCT(self, ballsNode, star_xyz, pen_xyz):
-        """
-        ballsNode : vtkMRMLMarkupsFiducialNode — StarBalls con 3 puntos
-        star_xyz  : np.array [x,y,z] — posición marcador en tracker (simulada)
-        pen_xyz   : np.array [x,y,z] — posición lápiz en tracker (simulada)
-
-        Devuelve pen_ct: np.array [x,y,z] en espacio CT (RAS, mm)
-        """
-        centroid       = self.getCentroidInCT(ballsNode)
-        T_star2ct      = self._translation(centroid)
-        T_tracker2star = self._translation(star_xyz)
-        T_tracker2pen  = self._translation(pen_xyz)
-
-        T_ct_pen = (
-            np.linalg.inv(T_star2ct)
-            @ np.linalg.inv(T_tracker2star)
-            @ T_tracker2pen
+    def computePenInCT(self, ballsNode, T_star2tracker, T_pen2tracker):
+        T_star2ct = self.computeStarToCT(ballsNode)
+        T_pen2ct = (
+            T_star2ct
+            @ np.linalg.inv(T_star2tracker)
+            @ T_pen2tracker
         )
-        return T_ct_pen[:3, 3]
+        return T_pen2ct
 
     def getCentroidInCT(self, ballsNode):
         """
@@ -707,6 +763,82 @@ class CTNavigatorLogic(ScriptedLoadableModuleLogic):
         T[:3, 3] = xyz
         return T
 
+    def computeStarToCT(self, ballsNode):
+        """
+        Calcula T_Star2CT (4x4) alineando las 3 bolas en coordenadas
+        locales del marcador con las 3 bolas markup en el CT (Horn/SVD).
+        """
+        # Bolas en coordenadas locales del marcador (mismas que CreateMarker en C#)
+        local = np.array([
+            [ 12.319,   3.206,   0.0],
+            [-13.660,   4.397,  15.0],
+            [  1.340,  -7.603, -15.0],
+        ])
+
+        # Bolas en el CT (markups StarBalls, en orden A, B, C)
+        ct = []
+        for i in range(3):
+            p = [0.0, 0.0, 0.0]
+            ballsNode.GetNthControlPointPositionWorld(i, p)
+            ct.append(p)
+        ct = np.array(ct)
+
+        R, t = self._horn(local, ct)
+
+        T = np.eye(4)
+        T[:3, :3] = R
+        T[:3, 3] = t
+        return T
+
+    def _horn(self, src, dst):
+        """
+        Horn/SVD: encuentra R, t tal que dst ≈ R·src + t.
+        src, dst: arrays (N,3). Devuelve R (3x3), t (3,).
+        """
+        # 1. Centroides
+        centroid_src = np.mean(src, axis=0) 
+        centroid_dst = np.mean(dst, axis=0)
+
+        # 2. Centrar
+        src_c = src - centroid_src
+        dst_c = dst - centroid_dst
+
+        # 3. Matriz H = Σ src_c[i] outer dst_c[i]  →  en numpy: src_c.T @ dst_c
+        H = src_c.T @ dst_c
+
+        # 4. SVD
+        U, S, Vt = np.linalg.svd(H)
+
+        # 5. R = V · U^T   (ojo: numpy da Vt = V^T, así que V = Vt.T)
+        R = Vt.T @ U.T
+
+        # 6. Corrección de reflexión si det(R) < 0
+        if np.linalg.det(R) < 0:
+            Vt[-1, :] *= -1
+            R = Vt.T @ U.T
+
+        # 7. t = centroid_dst - R · centroid_src
+        t = centroid_dst - R @ centroid_src
+
+        return R, t
+
+    def _readTransform(self, nodeName):
+        """
+        Lee la matriz 4x4 de un transform node por nombre.
+        Devuelve np.array (4,4), o None si el node no existe.
+        """
+        node = slicer.mrmlScene.GetFirstNodeByName(nodeName)
+        if node is None:
+            return None
+
+        vtkMat = vtk.vtkMatrix4x4()
+        node.GetMatrixTransformToParent(vtkMat)
+
+        M = np.zeros((4, 4))
+        for i in range(4):
+            for j in range(4):
+                M[i, j] = vtkMat.GetElement(i, j)
+        return M
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Tests

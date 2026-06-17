@@ -21,27 +21,65 @@ namespace KinectTracker {
 
     public class GeometryMatcher
 		{
+
+        private static bool Combine(int[] grupo, int grupoLleno, int desde,
+            Vector3[] detections, RigidBodyModel model, float tolerance, out MatchResult result)
+                {
+                    result = new MatchResult(false, new int[0], float.NaN, 0);
+
+                    if (grupoLleno == model.SphereCount)
+                    {
+                        // Construir sub-array con las detecciones del grupo (tamaño variable según modelo)
+                        Vector3[] subDetections = new Vector3[model.SphereCount];
+                        for (int k = 0; k < model.SphereCount; k++)
+                            subDetections[k] = detections[grupo[k]];
+
+                        // Permutar el orden dentro del sub-array (Permute prueba todos los órdenes)
+                        int[] perm = new int[model.SphereCount];
+                        for (int k = 0; k < perm.Length; k++)
+                            perm[k] = k;
+
+                        if (Permute(perm, 0, subDetections, model, tolerance, out MatchResult subResult))
+                        {
+                            // subResult.Correspondences tiene índices 0..N-1 del sub-array.
+                            // Traducir a índices originales de detections[] usando grupo[].
+                            int[] traducido = new int[model.SphereCount];
+                            for (int k = 0; k < model.SphereCount; k++)
+                                traducido[k] = grupo[subResult.Correspondences[k]];
+
+                            result = new MatchResult(true, traducido, subResult.Residual, model.SphereCount);
+                            return true;
+                        }
+
+                        return false;
+                    }
+
+                    for (int i = desde; i < detections.Length; i++)
+                    {
+                        grupo[grupoLleno] = i;
+                        if (Combine(grupo, grupoLleno + 1, i + 1, detections, model, tolerance, out result))
+                            return true;
+                    }
+
+                    return false;
+                }
+
         public static MatchResult Match(Vector3[] detections, RigidBodyModel model, float tolerance)
         {
-            if (detections.Length != model.SphereCount)
+            if (detections.Length < model.SphereCount)
             {
-                //Console.WriteLine("Number of detections must match the number of spheres in the model.");
                 return new MatchResult(false, new int[0], float.NaN, 0);
             }
 
-            int[] perm = new int[model.SphereCount];
-            for (int i = 0; i < perm.Length; i++)
-            {
-                perm[i] = i;
-            }
-
-            if (Permute(perm, 0, detections, model, tolerance, out MatchResult result))
+            int[] grupo = new int[model.SphereCount];
+            if (Combine(grupo, 0, 0, detections, model, tolerance, out MatchResult result))
             {
                 return result;
             }
 
             return new MatchResult(false, new int[0], float.NaN, 0);
         }
+        
 
         private static void Swap(int[] arr, int i, int j)
         {
