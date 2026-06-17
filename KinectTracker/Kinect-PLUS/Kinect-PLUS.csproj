@@ -110,16 +110,19 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BallProfiler.cs" />
     <Compile Include="Blob2DInfo.cs" />
     <Compile Include="BlobDetector.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="DepthMapper.cs" />
+    <Compile Include="DetectionStats.cs" />
     <Compile Include="GeometryMatcher.cs" />
     <Compile Include="ImageUtils.cs" />
     <Compile Include="KalmanPoseFilter.cs" />
     <Compile Include="KinectConfig.cs" />
     <Compile Include="KnownModels.cs" />
     <Compile Include="OpenIGTLinkServer.cs" />
+    <Compile Include="OperationMode.cs" />
     <Compile Include="PoseEstimator.cs" />
     <Compile Include="ProcessDepth.cs" />
     <Compile Include="ProcessIR.cs" />

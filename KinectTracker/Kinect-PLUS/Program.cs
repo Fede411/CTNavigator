@@ -13,8 +13,22 @@ namespace KinectTracker
         {
             Console.WriteLine("=== Kinect IR + Depth Viewer ===\n");
 
+            Console.WriteLine("Modo: 1 = Normal, 2 = Perfilado");
+            string opt = Console.ReadLine();
+
+            OperationMode mode = OperationMode.Normal;
+            float knownDistance = 0;
+
+            if (opt == "2")
+            {
+                mode = OperationMode.Profiling;
+                Console.WriteLine("Distancia conocida de la bola (mm):");
+                float.TryParse(Console.ReadLine(), out knownDistance);
+            }
+
+           
             ViewerWindow viewer = new ViewerWindow();
-            KinectConfig kinect = new KinectConfig(viewer);
+            KinectConfig kinect = new KinectConfig(viewer, mode, knownDistance);
 
             if (!kinect.Start())
             {

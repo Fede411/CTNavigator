@@ -11,9 +11,10 @@ namespace KinectTracker
 {
     public class BlobDetector
     {
-        public List<Blob2DInfo> DetectBlobs(byte[] irPixels)
+        public List<Blob2DInfo> DetectBlobs(byte[] irPixels, out RejectionCounts rejections)
         {
             List<Blob2DInfo> centroids = new List<Blob2DInfo>();
+            rejections = new RejectionCounts();
 
             Mat irMat = new Mat(Constants.IMG_HEIGHT, Constants.IMG_WIDTH, DepthType.Cv8U, 1); //Matrix, equivalente al bitmap pero en OpenCV
             byte[] grayPixels = new byte[Constants.IMG_WIDTH * Constants.IMG_HEIGHT];
@@ -33,7 +34,7 @@ namespace KinectTracker
             //Contornos
             VectorOfVectorOfPoint contours = new VectorOfVectorOfPoint();
             Mat hierarchy = new Mat();
-            CvInvoke.FindContours(irMat, contours, hierarchy, RetrType.External, ChainApproxMethod.ChainApproxSimple);
+            CvInvoke.FindContours(irMat, contours, hierarchy, RetrType.External, ChainApproxMethod.ChainApproxSimple);         
 
             //Calcular centroides y filtrar por área, circularidad y aspect ratio
             for (int i = 0; i < contours.Size; i++)
@@ -44,18 +45,18 @@ namespace KinectTracker
                     
                     //Filtro por área
                     if (area < Constants.MIN_BLOB_AREA || area > Constants.MAX_BLOB_AREA)
-                        continue;
+                    { rejections.ByArea++; continue; }
 
                     //Filtro circularidad (esferas deberían ser redondas, ~1.0)
                     //Fórmula: 4π × área / perímetro²
                     double perimeter = CvInvoke.ArcLength(contour, true);
                     double circularity = perimeter > 0 ? 4 * Math.PI * area / (perimeter * perimeter) : 0;
-                    if (circularity < Constants.MIN_CIRCULARITY) continue;
+                    if (circularity < Constants.MIN_CIRCULARITY) {  rejections.ByCircularity++; continue; }
 
                     //Filtro aspect ratio (esferas son aprox cuadradas en bounding box)
                     Rectangle bbox = CvInvoke.BoundingRectangle(contour);
                     double aspect = (double)bbox.Width / Math.Max(1, bbox.Height);
-                    if (aspect < Constants.MIN_ASPECT || aspect > Constants.MAX_ASPECT) continue;
+                    if (aspect < Constants.MIN_ASPECT || aspect > Constants.MAX_ASPECT) { rejections.ByAspect++; continue; }
 
                     float blobRadius = (float)Math.Sqrt(area / Math.PI);
 
@@ -66,7 +67,7 @@ namespace KinectTracker
                     float cx = (float)(moments.M10 / moments.M00);
                     float cy = (float)(moments.M01 / moments.M00);
 
-                    new Blob2DInfo { Centroid = new PointF(cx, cy), RadiusPx = blobRadius };
+                    centroids.Add(new Blob2DInfo { Centroid = new PointF(cx, cy), RadiusPx = blobRadius });
                 }
             }
 
