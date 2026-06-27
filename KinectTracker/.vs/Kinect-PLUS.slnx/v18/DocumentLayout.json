@@ -3,16 +3,16 @@
   "WorkspaceRootPath": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|c:\\tfm\\ctnavigator-clone\\kinecttracker\\kinect-plus\\kinectconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|solutionrelative:kinect-plus\\kinectconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|c:\\tfm\\ctnavigator-clone\\kinecttracker\\kinect-plus\\processir.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|solutionrelative:kinect-plus\\processir.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|c:\\tfm\\ctnavigator-clone\\kinecttracker\\kinect-plus\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|solutionrelative:kinect-plus\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|c:\\tfm\\ctnavigator-clone\\kinecttracker\\kinect-plus\\processtooltip.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|solutionrelative:kinect-plus\\processtooltip.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|C:\\TFM\\CTNavigator-clone\\KinectTracker\\kinect-plus\\geometrymatcher.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|solutionrelative:kinect-plus\\geometrymatcher.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -22,46 +22,45 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 0,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "ProcessIR.cs",
-              "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\ProcessIR.cs",
-              "RelativeDocumentMoniker": "Kinect-PLUS\\ProcessIR.cs",
-              "ToolTip": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\ProcessIR.cs",
-              "RelativeToolTip": "Kinect-PLUS\\ProcessIR.cs",
-              "ViewState": "AgIAAC4AAAAAAAAAAAAgwEMAAAAQAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-06-17T20:39:10.434Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "KinectConfig.cs",
-              "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\KinectConfig.cs",
-              "RelativeDocumentMoniker": "Kinect-PLUS\\KinectConfig.cs",
-              "ToolTip": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\KinectConfig.cs",
-              "RelativeToolTip": "Kinect-PLUS\\KinectConfig.cs",
-              "ViewState": "AgIAAH0AAAAAAAAAAAAiwJUAAAARAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-06-17T20:39:09.307Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\Program.cs",
               "RelativeDocumentMoniker": "Kinect-PLUS\\Program.cs",
               "ToolTip": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\Program.cs",
               "RelativeToolTip": "Kinect-PLUS\\Program.cs",
-              "ViewState": "AgIAAAsAAAAAAAAAAAAQwB0AAAAMAAAAAAAAAA==",
+              "ViewState": "AgIAAEEAAAAAAAAAAAAmwFUAAAAOAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-06-17T20:39:03.894Z",
+              "WhenOpened": "2026-06-27T15:39:56.017Z",
               "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "ProcessTooltip.cs",
+              "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\ProcessTooltip.cs",
+              "RelativeDocumentMoniker": "Kinect-PLUS\\ProcessTooltip.cs",
+              "ToolTip": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\ProcessTooltip.cs",
+              "RelativeToolTip": "Kinect-PLUS\\ProcessTooltip.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAFgAAABcAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-06-23T18:54:58.912Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "GeometryMatcher.cs",
+              "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\GeometryMatcher.cs",
+              "RelativeDocumentMoniker": "Kinect-PLUS\\GeometryMatcher.cs",
+              "ToolTip": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\GeometryMatcher.cs",
+              "RelativeToolTip": "Kinect-PLUS\\GeometryMatcher.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAGMAAAARAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-06-23T18:36:00.461Z"
             }
           ]
         }

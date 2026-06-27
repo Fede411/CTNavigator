@@ -45,7 +45,7 @@ namespace KinectTracker
             ToolFound = false;
             Vector3[] instrumentDetections = detectionsArr;
 
-            MatchResult markerMatch = GeometryMatcher.Match(detectionsArr, markerModel, 10.0f);
+            MatchResult markerMatch = GeometryMatcher.Match(detectionsArr, markerModel, 10.0f, markerModel.SphereCount);
 
             if (markerMatch.Success)
             {
@@ -78,12 +78,18 @@ namespace KinectTracker
             }
 
             //2. Buscar el instrumento (4 esferas) entre las detecciones restantes
-            MatchResult matchResult = GeometryMatcher.Match(instrumentDetections, instrumentModel, 10.0f);
+            MatchResult matchResult = GeometryMatcher.Match(instrumentDetections, instrumentModel, 10.0f, instrumentModel.SphereCount);
 
             if (matchResult.Success)
             {
+                // Construir el sub-modelo con SOLO las esferas que casaron (4 en match completo, 3 en parcial)
+                // ModelSpheres = índices de las esferas del modelo que el matcher emparejó
+                Vector3[] modelPts = new Vector3[matchResult.ModelSpheres.Length];
+                for (int i = 0; i < modelPts.Length; i++)
+                    modelPts[i] = instrumentModel.LocalSpheres[matchResult.ModelSpheres[i]];
+
                 var pose = PoseEstimator.ComputePose(
-                    instrumentModel.LocalSpheres, instrumentDetections, matchResult.Correspondences);
+                    modelPts, instrumentDetections, matchResult.Correspondences);
 
                 var toolTipLocal = MathNet.Numerics.LinearAlgebra.Vector<double>.Build.Dense(
                     new double[] { 0, 0, 0 });
@@ -185,7 +191,7 @@ namespace KinectTracker
                 }
             }
 
-            if (associationCount >= 3)
+            if (associationCount >= 2)
             {
                 List<Vector3> modelPts = new List<Vector3>();
                 List<Vector3> detectedPts = new List<Vector3>();

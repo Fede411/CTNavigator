@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Numerics;
 
 namespace KinectTracker {
@@ -9,13 +10,15 @@ namespace KinectTracker {
         public readonly int[] Correspondences; //model.LocalSpheres[i] corresponde a detections[Correspondences[i]]
         public readonly float Residual;
         public readonly int Matches;
+        public readonly int[] ModelSpheres;
 
-        public MatchResult(bool success, int[] correspondences, float residual, int matches)
+        public MatchResult(bool success, int[] correspondences, float residual, int matches, int[] modelSpheres)
         {
             this.Success = success;
             this.Correspondences = correspondences;
             this.Residual = residual;
             this.Matches = matches;
+            this.ModelSpheres = modelSpheres;
         }
     }
 
@@ -23,79 +26,101 @@ namespace KinectTracker {
 		{
 
         private static bool Combine(int[] grupo, int grupoLleno, int desde,
-            Vector3[] detections, RigidBodyModel model, float tolerance, out MatchResult result)
+    Vector3[] detections, int[] modelSubset, SphereDistance[] distLocal, float tolerance, out MatchResult result)
+        {
+            result = new MatchResult(false, new int[0], float.NaN, 0, new int[0]);
+            int k = modelSubset.Length;   // tamaño del subconjunto (4 = completo, 3 = trío)
+
+            if (grupoLleno == k)
+            {
+                // Construir sub-array con las detecciones del grupo (tamaño variable según modelo)
+                Vector3[] subDetections = new Vector3[k];
+                for (int m = 0; m < k; m++)
+                    subDetections[m] = detections[grupo[m]];
+
+                // Permutar el orden dentro del sub-array (Permute prueba todos los órdenes)
+                int[] perm = new int[k];
+                for (int m = 0; m < perm.Length; m++)
+                    perm[m] = m;
+
+                if (Permute(perm, 0, subDetections, distLocal, tolerance, out MatchResult subResult))
                 {
-                    result = new MatchResult(false, new int[0], float.NaN, 0);
+                    // subResult.Correspondences tiene índices 0..N-1 del sub-array.
+                    // Traducir a índices originales de detections[] usando grupo[].
+                    int[] traducido = new int[k];
+                    for (int m = 0; m < k; m++)
+                        traducido[m] = grupo[subResult.Correspondences[m]];
 
-                    if (grupoLleno == model.SphereCount)
-                    {
-                        // Construir sub-array con las detecciones del grupo (tamaño variable según modelo)
-                        Vector3[] subDetections = new Vector3[model.SphereCount];
-                        for (int k = 0; k < model.SphereCount; k++)
-                            subDetections[k] = detections[grupo[k]];
-
-                        // Permutar el orden dentro del sub-array (Permute prueba todos los órdenes)
-                        int[] perm = new int[model.SphereCount];
-                        for (int k = 0; k < perm.Length; k++)
-                            perm[k] = k;
-
-                        if (Permute(perm, 0, subDetections, model, tolerance, out MatchResult subResult))
-                        {
-                            // subResult.Correspondences tiene índices 0..N-1 del sub-array.
-                            // Traducir a índices originales de detections[] usando grupo[].
-                            int[] traducido = new int[model.SphereCount];
-                            for (int k = 0; k < model.SphereCount; k++)
-                                traducido[k] = grupo[subResult.Correspondences[k]];
-
-                            result = new MatchResult(true, traducido, subResult.Residual, model.SphereCount);
-                            return true;
-                        }
-
-                        return false;
-                    }
-
-                    for (int i = desde; i < detections.Length; i++)
-                    {
-                        grupo[grupoLleno] = i;
-                        if (Combine(grupo, grupoLleno + 1, i + 1, detections, model, tolerance, out result))
-                            return true;
-                    }
-
-                    return false;
+                    // modelSubset = qué esferas del modelo casaron (necesario para el tooltip en match parcial)
+                    result = new MatchResult(true, traducido, subResult.Residual, k, (int[])modelSubset.Clone());
+                    return true;
                 }
 
-        public static MatchResult Match(Vector3[] detections, RigidBodyModel model, float tolerance)
-        {
-            if (detections.Length < model.SphereCount)
-            {
-                return new MatchResult(false, new int[0], float.NaN, 0);
+                return false;
             }
 
-            int[] grupo = new int[model.SphereCount];
-            if (Combine(grupo, 0, 0, detections, model, tolerance, out MatchResult result))
+            for (int i = desde; i < detections.Length; i++)
             {
-                return result;
+                grupo[grupoLleno] = i;
+                if (Combine(grupo, grupoLleno + 1, i + 1, detections, modelSubset, distLocal, tolerance, out result))
+                    return true;
             }
 
-            return new MatchResult(false, new int[0], float.NaN, 0);
+            return false;
         }
-        
+
+        public static MatchResult Match(Vector3[] detections, RigidBodyModel model, float tolerance, int minSpheres)
+        {
+            MatchResult best = new MatchResult(false, new int[0], float.NaN, 0, new int[0]);
+            float bestRms = float.MaxValue;
+
+            for (int k = model.SphereCount; k >= minSpheres; k--)
+            {
+                if (detections.Length < k) continue;   // con k=4 y 3 detecciones, salta a k=3
+
+                // Enumera qué k esferas del modelo (C(SphereCount,k) subconjuntos)
+                foreach (int[] modelSubset in Subconjuntos(model.SphereCount, k))
+                {
+                    // distancias del modelo cuyos DOS extremos están en el subconjunto, reindexadas a 0..k-1
+                    var lista = new List<SphereDistance>();
+                    foreach (var sd in model.Distances)
+                    {
+                        int pa = Array.IndexOf(modelSubset, sd.IndexA);
+                        int pb = Array.IndexOf(modelSubset, sd.IndexB);
+                        if (pa >= 0 && pb >= 0)
+                            lista.Add(new SphereDistance(pa, pb, sd.DistanceMm));
+                    }
+                    SphereDistance[] distLocal = lista.ToArray();
+
+                    int[] grupo = new int[modelSubset.Length];
+                    if (Combine(grupo, 0, 0, detections, modelSubset, distLocal, tolerance, out MatchResult r))
+                    {
+                        if (r.Residual < bestRms) { bestRms = r.Residual; best = r; }
+                    }
+                }
+
+                // Si algún subconjunto de este k casó, no bajamos a menos esferas
+                if (best.Success) return best;
+            }
+            return best;
+        }
+
 
         private static void Swap(int[] arr, int i, int j)
         {
             (arr[i], arr[j]) = (arr[j], arr[i]); // intercambia arr[i] con arr[j]
         }
 
-        private static bool Permute(int[] perm, int start, Vector3[] detections, RigidBodyModel model, float tolerance, out MatchResult result)
+        private static bool Permute(int[] perm, int start, Vector3[] detections, SphereDistance[] distLocal, float tolerance, out MatchResult result)
         {
-            result = new MatchResult(false, new int[0], float.NaN, 0);
+            result = new MatchResult(false, new int[0], float.NaN, 0, new int[0]);
 
             if (start == perm.Length)
             {
-                if (CheckPermutation(perm, detections, model, tolerance, out float residual))
+                if (CheckPermutation(perm, detections, distLocal, tolerance, out float residual))
                 {
                     // perm[i] = índice de la detección asignada a la esfera i del modelo (convención B)
-                    result = new MatchResult(true, (int[])perm.Clone(), residual, model.SphereCount);
+                    result = new MatchResult(true, (int[])perm.Clone(), residual, perm.Length, new int[0]);
                     return true;
                 }
                 return false;
@@ -104,7 +129,7 @@ namespace KinectTracker {
             for (int i = start; i < perm.Length; i++)
             {
                 Swap(perm, start, i);
-                if (Permute(perm, start + 1, detections, model, tolerance, out result))
+                if (Permute(perm, start + 1, detections, distLocal, tolerance, out result))
                     return true;
                 Swap(perm, start, i); // backtrack
             }
@@ -112,10 +137,25 @@ namespace KinectTracker {
             return false;
         }
 
-        private static bool CheckPermutation(int[] perm, Vector3[] detections, RigidBodyModel model, float tolerance, out float residual) {
+        private static List<int[]> Subconjuntos(int n, int k)
+        {
+            var res = new List<int[]>();
+            int[] actual = new int[k];
+            void Rec(int desde, int lleno)
+            {
+                if (lleno == k) { res.Add((int[])actual.Clone()); return; }
+                for (int i = desde; i < n; i++) { actual[lleno] = i; Rec(i + 1, lleno + 1); }
+            }
+            Rec(0, 0);
+            return res;
+        }
+
+        private static bool CheckPermutation(int[] perm, Vector3[] detections, SphereDistance[] distLocal, float tolerance, out float residual)
+        {
             float residualAccum = 0f;
 
-            foreach (var sd in model.Distances) {
+            foreach (var sd in distLocal)
+            {   // distancias internas del subconjunto, en índices locales 0..k-1
                 Vector3 detA = detections[perm[sd.IndexA]];
                 Vector3 detB = detections[perm[sd.IndexB]];
 
@@ -131,7 +171,7 @@ namespace KinectTracker {
 
             }
 
-            residual = (float) Math.Sqrt(residualAccum/model.Distances.Length); //RMS
+            residual = (float)Math.Sqrt(residualAccum / distLocal.Length); //RMS
             return true;
         }
     }
