@@ -27,6 +27,9 @@ namespace KinectTracker
         public bool ToolFound { get; private set; } = false;
         public Matrix<double> ToolR { get; private set; }
         public Vector3 ToolT { get; private set; }
+        public float LastPoseError { get; private set; } = 0f;
+        public int[] MissingSphereCount { get; private set; } = new int[4];
+        public float LastMatchResidual { get; private set; } = 0f;
 
         public ToolTipProcessor(KalmanPoseFilter kalmanFilter)
         {
@@ -34,8 +37,7 @@ namespace KinectTracker
         }
 
         public void Process(List<PointF> currentCentroids, List<Vector3> current3DPoints,
-            byte[] irPixels, RigidBodyModel instrumentModel, RigidBodyModel markerModel,
-            DepthMapper depthMapper)
+            byte[] irPixels, RigidBodyModel instrumentModel, RigidBodyModel markerModel)
         {
             Vector3[] detectionsArr = current3DPoints.ToArray();
 
@@ -65,10 +67,11 @@ namespace KinectTracker
 
                     MarkerFound = true;
                     MarkerMatchesSuccessful++;
+
                     MarkerR = markerPose.R;
                     MarkerT = markerPose.t;
                     MarkerPosition = markerPos;
-                    DrawMarker(markerPos, markerMatch.Correspondences, currentCentroids, irPixels, depthMapper);
+                    //DrawMarker(markerPos, markerMatch.Correspondences, currentCentroids, irPixels, depthMapper);
 
                     Console.WriteLine($"  MARKER! error={markerPose.error:F2}mm  pos=({markerPos.X:F1}, {markerPos.Y:F1}, {markerPos.Z:F1}) mm");
 
@@ -78,7 +81,7 @@ namespace KinectTracker
             }
 
             //2. Buscar el instrumento (4 esferas) entre las detecciones restantes
-            MatchResult matchResult = GeometryMatcher.Match(instrumentDetections, instrumentModel, 10.0f, instrumentModel.SphereCount);
+            MatchResult matchResult = GeometryMatcher.Match(instrumentDetections, instrumentModel, 5.0f, instrumentModel.SphereCount);
 
             if (matchResult.Success)
             {
@@ -100,7 +103,7 @@ namespace KinectTracker
                     (float)toolTipKinect[1] + pose.t.Y,
                     (float)toolTipKinect[2] + pose.t.Z);
 
-                if (pose.error < 10.0f)
+                if (pose.error < 12.0f)
                 {
                     bool poseValid = true;
                     if (hasLastPose)
@@ -112,15 +115,17 @@ namespace KinectTracker
                     if (poseValid)
                     {
                         MatchesSuccessful++;
+                        Console.WriteLine($"  MATCH COMPLETO (4/4)! pose_error={pose.error:F2}mm  residual={matchResult.Residual:F2}mm");
+                        LastMatchResidual = matchResult.Residual;
                         consecutivePartials = 0;
-                        AcceptPose(pose, toolTip, currentCentroids, irPixels, instrumentModel, depthMapper);
+                        AcceptPose(pose, toolTip, currentCentroids, irPixels, instrumentModel);
                     }
                 }
             }
             else if (instrumentDetections.Length >= 3 && lastProjectedSpheres != null &&
-                     (DateTime.Now - lastMatchTime).TotalSeconds < 0.5)
+                     (DateTime.Now - lastMatchTime).TotalSeconds < 5)
             {
-                TryPartialMatch(instrumentDetections, currentCentroids, irPixels, instrumentModel, depthMapper);
+                TryPartialMatch(instrumentDetections, currentCentroids, irPixels, instrumentModel);
             }
         }
 
@@ -139,11 +144,12 @@ namespace KinectTracker
 
         private void AcceptPose((Matrix<double> R, Vector3 t, float error) pose,
             Vector3 toolTip, List<PointF> currentCentroids, byte[] irPixels,
-            RigidBodyModel instrumentModel, DepthMapper depthMapper)
+            RigidBodyModel instrumentModel)
         {
             ToolFound = true;
             ToolR = pose.R;
             ToolT = pose.t;
+            LastPoseError = pose.error;
             lastToolTip = toolTip;
             hasLastPose = true;
             lastMatchTime = DateTime.Now;
@@ -158,11 +164,11 @@ namespace KinectTracker
             kalmanFilter.Update(toolTip, rotation, DateTime.Now);
 
             UpdateProjections(pose, instrumentModel);
-            DrawToolTip(toolTip, currentCentroids, irPixels, depthMapper);
+            DrawToolTip(kalmanFilter.FilteredPosition, currentCentroids, irPixels);
         }
 
         private void TryPartialMatch(Vector3[] detections, List<PointF> currentCentroids,
-            byte[] irPixels, RigidBodyModel instrumentModel, DepthMapper depthMapper)
+            byte[] irPixels, RigidBodyModel instrumentModel)
         {
             int[] partialCorrespondences = new int[4];
             bool[] detectionUsed = new bool[detections.Length];
@@ -209,6 +215,10 @@ namespace KinectTracker
                 for (int i = 0; i < modelPts.Count; i++)
                     directCorr[i] = i;
 
+                for (int i = 0; i < 4; i++)
+                    if (partialCorrespondences[i] < 0)
+                        MissingSphereCount[i]++;
+
                 var pose = PoseEstimator.ComputePose(
                     modelPts.ToArray(), detectedPts.ToArray(), directCorr);
 
@@ -224,11 +234,11 @@ namespace KinectTracker
                         (float)toolTipKinect[2] + pose.t.Z);
 
                     float jump = Vector3.Distance(toolTip, lastToolTip);
-                    if (jump < 50.0f && consecutivePartials < 5)
+                    if (jump < 20.0f && consecutivePartials < 50)
                     {
                         consecutivePartials++;
                         PartialMatchesSuccessful++;
-                        AcceptPose(pose, toolTip, currentCentroids, irPixels, instrumentModel, depthMapper);
+                        AcceptPose(pose, toolTip, currentCentroids, irPixels, instrumentModel);
 
                         Console.WriteLine($"  PARTIAL MATCH ({associationCount}/4)! pose_error={pose.error:F2}mm");
                     }
@@ -254,17 +264,20 @@ namespace KinectTracker
             }
         }
 
-        private void DrawToolTip(Vector3 toolTip, List<PointF> currentCentroids,
-            byte[] irPixels, DepthMapper depthMapper)
+        private void DrawToolTip(Vector3 toolTip, List<PointF> currentCentroids, byte[] irPixels)
         {
-            var tt2D = depthMapper.ConvertTo2D(toolTip.X, toolTip.Y, toolTip.Z);
+            var (tx, ty) = StereoDepthMapper.Project2D(toolTip);
 
-            for (int i = 0; i < currentCentroids.Count; i++)
-            {
-                var c = currentCentroids[i];
-                ImageUtils.DrawLine(irPixels, (int)c.X, (int)c.Y, tt2D.X, tt2D.Y, 255, 255, 0);
-            }
-            ImageUtils.DrawCircle(irPixels, tt2D.X, tt2D.Y, 5, 255, 0, 0);
+            foreach (var c in currentCentroids)
+                ImageUtils.DrawLine(irPixels, (int)c.X, (int)c.Y, tx, ty, 255, 255, 0);
+
+            ImageUtils.DrawCircle(irPixels, tx, ty, 5, 255, 0, 0);
+        }
+
+        public void DrawCoastedTip(Vector3 tip, byte[] irPixels)
+        {
+            var (tx, ty) = StereoDepthMapper.Project2D(tip);
+            ImageUtils.DrawCircle(irPixels, tx, ty, 5, 255, 128, 0);  // naranja: distinguir de la punta roja real
         }
 
         private void DrawMarker(Vector3 markerPos, int[] correspondences,
@@ -281,11 +294,11 @@ namespace KinectTracker
                     {
                         if (idx < 0 || idx >= currentCentroids.Count) continue;
                         var c = currentCentroids[idx];
-                        ImageUtils.DrawLine(irPixels, (int)c.X, (int)c.Y, m2D.X, m2D.Y, 0, 0, 255);
+                        //ImageUtils.DrawLine(irPixels, (int)c.X, (int)c.Y, m2D.X, m2D.Y, 0, 0, 255);
                     }
 
                     // Círculo cian en el centro, para diferenciarlo del tooltip (rojo)
-                    ImageUtils.DrawCircle(irPixels, m2D.X, m2D.Y, 5, 0, 255, 255);
+                    //ImageUtils.DrawCircle(irPixels, m2D.X, m2D.Y, 5, 0, 255, 255);
                 }
     }
 }

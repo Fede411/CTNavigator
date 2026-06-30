@@ -13,7 +13,8 @@ namespace KinectTracker
         {
             Console.WriteLine("=== Kinect IR + Depth Viewer ===\n");
 
-            Console.WriteLine("Modo: 1 = Normal, 2 = Perfilado");
+
+            Console.WriteLine("Modo: 1 = Normal, 2 = Perfilado, 3 = Calibración");
             string opt = Console.ReadLine();
 
             OperationMode mode = OperationMode.Normal;
@@ -26,7 +27,13 @@ namespace KinectTracker
                 float.TryParse(Console.ReadLine(), out knownDistance);
             }
 
-           
+            if (opt == "3")
+            {
+                mode = OperationMode.Calibration;
+                Console.WriteLine("¡A calibrar se ha dicho! (Pusla ESPACIO para guardar imagenes en C:/calib)");
+            }
+
+
             ViewerWindow viewer = new ViewerWindow();
             KinectConfig kinect = new KinectConfig(viewer, mode, knownDistance);
 

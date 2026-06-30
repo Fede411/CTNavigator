@@ -3,6 +3,37 @@
 namespace KinectTracker {
     public static class ImageUtils
     {
+        // Convierte el IR crudo (2 bytes/px) a escala de grises BGRA, SIN threshold.
+        // Para calibración: MATLAB necesita ver el tablero, no blobs binarizados.
+        public static byte[] IRaGris(byte[] colorPixels)
+        {
+            byte[] gris = new byte[Constants.IMG_WIDTH * Constants.IMG_HEIGHT * 4];
+            for (int i = 0; i < Constants.IMG_WIDTH * Constants.IMG_HEIGHT; i++)
+            {
+                int irValue = colorPixels[i * 2] | (colorPixels[i * 2 + 1] << 8);
+                byte intensity = (byte)(irValue >> 8);
+                gris[i * 4] = intensity;
+                gris[i * 4 + 1] = intensity;
+                gris[i * 4 + 2] = intensity;
+                gris[i * 4 + 3] = 255;
+            }
+            return gris;
+        }
+
+        public static void GuardarPNG(byte[] irPixels, string path)
+        {
+            using (var bmp = new System.Drawing.Bitmap(Constants.IMG_WIDTH, Constants.IMG_HEIGHT,
+                System.Drawing.Imaging.PixelFormat.Format32bppRgb))
+            {
+                var d = bmp.LockBits(
+                    new System.Drawing.Rectangle(0, 0, Constants.IMG_WIDTH, Constants.IMG_HEIGHT),
+                    System.Drawing.Imaging.ImageLockMode.WriteOnly, bmp.PixelFormat);
+                System.Runtime.InteropServices.Marshal.Copy(irPixels, 0, d.Scan0, irPixels.Length);
+                bmp.UnlockBits(d);
+                bmp.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+            }
+        }
+
         public static void DrawCircle(byte[] pixels, int cx, int cy, int radius, byte r, byte g, byte b)
         //Dibujar círculo en imagen BGRA en memoria
         {

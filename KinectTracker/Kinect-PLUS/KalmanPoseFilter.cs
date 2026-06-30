@@ -59,7 +59,7 @@ namespace KinectTracker
         public void Update(Vector3 measuredPosition, Quaternion measuredRotation, DateTime now) {
 
             double dt = (now - lastTime).TotalSeconds;
-            if (dt <= 0) dt = 0.033; // fallback a 30fps
+            if (dt < 0.01) dt = 0.033;   // en vez de solo <= 0 // fallback a 30fps
 
             if (!initialized)
             {
@@ -89,6 +89,9 @@ namespace KinectTracker
 
                 // Corregir velocidad: error/dt es la velocidad "medida"
                 state[i + 3] = error / dt;
+                
+                if (state[i + 3] > Constants.MAX_VEL) state[i + 3] = Constants.MAX_VEL;
+                if (state[i + 3] < -Constants.MAX_VEL) state[i + 3] = -Constants.MAX_VEL;
 
                 // Reducir incertidumbre
                 P[i] = (1 - K) * P[i];

@@ -1,6 +1,6 @@
 ﻿namespace KinectTracker {
     public enum OperationMode { 
-     Normal, Profiling, Recording   
+     Normal, Profiling, Calibration   
     
     }
 

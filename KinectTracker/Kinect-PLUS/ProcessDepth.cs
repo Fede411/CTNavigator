@@ -28,7 +28,7 @@ namespace KinectTracker
                 depthPixels[i * 4 + 3] = 255;
             }
 
-            viewer.UpdateDepthImage(depthPixels);
+            //viewer.UpdateDepthImage(depthPixels);
         }
     }
 }

@@ -24,6 +24,7 @@ namespace KinectTracker {
 
     public class GeometryMatcher
 		{
+        public static int RejectLeve = 0, RejectMedio = 0, RejectGrave = 0;
 
         private static bool Combine(int[] grupo, int grupoLleno, int desde,
     Vector3[] detections, int[] modelSubset, SphereDistance[] distLocal, float tolerance, out MatchResult result)
@@ -164,8 +165,14 @@ namespace KinectTracker {
 
                 if (diff > tolerance)
                 {
-                    residual = 0f;
-                    return false; // No match
+                    {
+                        if (diff < 30) RejectLeve++;
+                        else if (diff < 100) RejectMedio++;
+                        else RejectGrave++;
+
+                        residual = 0f;
+                        return false;
+                    }
                 }
                 residualAccum += diff * diff;
 

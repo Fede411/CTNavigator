@@ -78,5 +78,19 @@ namespace KinectTracker
             }
             Console.WriteLine($"CSV volcado en: {csvPath}");
         }
+
+        // === Captura de pares de calibración estéreo (a demanda, una por pose) ===
+        // Repurposed: vuelca tableros IR en gris para Stereo Camera Calibrator de MATLAB.
+        // El perfilado de precisión estéreo (FLE, TRE) se completará en el paso 6.
+        private int parCalib = 0;
+
+        public void GuardarParCalib(byte[] grisA, byte[] grisB, string dir)
+        {
+            Directory.CreateDirectory(dir);
+            ImageUtils.GuardarPNG(grisA, $@"{dir}\A_{parCalib:D2}.png");
+            ImageUtils.GuardarPNG(grisB, $@"{dir}\B_{parCalib:D2}.png");
+            Console.WriteLine($"[CALIB] par {parCalib} guardado");
+            parCalib++;
+        }
     }
 }

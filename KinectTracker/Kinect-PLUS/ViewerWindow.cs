@@ -3,33 +3,30 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Windows.Forms;
 
-namespace KinectTracker {
+namespace KinectTracker
+{
     public class ViewerWindow
     {
         //Construcción de ventana y controles
-        private PictureBox irPictureBox;
-        private PictureBox depthPictureBox;
+        private PictureBox irPictureBox;   // único panel: A | B lado a lado
         private Form viewerForm;
 
-        // Doble buffer IR
-        private Bitmap irBufferA = null;
-        private Bitmap irBufferB = null;
-        private bool useIrA = true;
+        // Doble buffer de la imagen combinada (ancho doble)
+        private Bitmap comboBuffer0 = null;
+        private Bitmap comboBuffer1 = null;
+        private bool useCombo0 = true;
+        private Bitmap currentCombo = null;
 
-        // Doble buffer Depth
-        private Bitmap depthBufferA = null;
-        private Bitmap depthBufferB = null;
-        private bool useDepthA = true;
+        private const int W = Constants.IMG_WIDTH;
+        private const int H = Constants.IMG_HEIGHT;
+
+        private volatile bool capturaSolicitada = false;
 
         public ViewerWindow()
         {
-            // Configuración de la ventana
-            irBufferA = new Bitmap(Constants.IMG_WIDTH, Constants.IMG_HEIGHT, PixelFormat.Format32bppRgb);
-            irBufferB = new Bitmap(Constants.IMG_WIDTH, Constants.IMG_HEIGHT, PixelFormat.Format32bppRgb);
-
-            depthBufferA = new Bitmap(Constants.IMG_WIDTH, Constants.IMG_HEIGHT, PixelFormat.Format32bppRgb);
-            depthBufferB = new Bitmap(Constants.IMG_WIDTH, Constants.IMG_HEIGHT, PixelFormat.Format32bppRgb);
-
+            // Bitmap combinado: dos cámaras una al lado de la otra
+            comboBuffer0 = new Bitmap(W * 2, H, PixelFormat.Format32bppRgb);
+            comboBuffer1 = new Bitmap(W * 2, H, PixelFormat.Format32bppRgb);
             BuildForm();
         }
 
@@ -37,116 +34,81 @@ namespace KinectTracker {
         {
             Application.EnableVisualStyles();
 
-            //Crea ventana
             viewerForm = new Form();
-            viewerForm.Text = "Kinect IR + Depth Stream";
+            viewerForm.Text = "Estéreo IR - A | B";
             viewerForm.Size = new Size(1320, 560);
             viewerForm.StartPosition = FormStartPosition.CenterScreen;
 
-            TableLayoutPanel layout = new TableLayoutPanel();
-            layout.Dock = DockStyle.Fill;
-            layout.ColumnCount = 2;
-            layout.RowCount = 2;
-            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30)); //Labels arriba
-            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); //Imagenes abajo
-            viewerForm.Controls.Add(layout);
+            viewerForm.KeyPreview = true;
+            viewerForm.KeyDown += (s, e) => { if (e.KeyCode == Keys.Space) capturaSolicitada = true; };
 
-            //Labels descriptivos
-            Label irLabel = new Label();
-            irLabel.Text = "IR Stream (con threshold)";
-            irLabel.Dock = DockStyle.Fill;
-            irLabel.TextAlign = ContentAlignment.MiddleCenter;
-            irLabel.Font = new Font("Consolas", 10, FontStyle.Bold);
-            layout.Controls.Add(irLabel, 0, 0);
-
-            Label depthLabel = new Label();
-            depthLabel.Text = "Depth Stream (cerca=blanco, lejos=negro)";
-            depthLabel.Dock = DockStyle.Fill;
-            depthLabel.TextAlign = ContentAlignment.MiddleCenter;
-            depthLabel.Font = new Font("Consolas", 10, FontStyle.Bold);
-            layout.Controls.Add(depthLabel, 1, 0);
-
-            //Crea PictureBox IR (izquierda)
+            // Un solo PictureBox que ocupa toda la ventana
             irPictureBox = new PictureBox();
             irPictureBox.Dock = DockStyle.Fill;
-            irPictureBox.SizeMode = PictureBoxSizeMode.Zoom;
             irPictureBox.BackColor = Color.Black;
-            layout.Controls.Add(irPictureBox, 0, 1);
+            viewerForm.Controls.Add(irPictureBox);
 
-            //Crea PictureBox Depth (derecha)
-            depthPictureBox = new PictureBox();
-            depthPictureBox.Dock = DockStyle.Fill;
-            depthPictureBox.SizeMode = PictureBoxSizeMode.Zoom;
-            depthPictureBox.BackColor = Color.Black;
-            layout.Controls.Add(depthPictureBox, 1, 1);
+            // Pintado manual del bitmap combinado
+            irPictureBox.Paint += (s, e) =>
+            {
+                if (currentCombo != null)
+                    e.Graphics.DrawImage(currentCombo, irPictureBox.ClientRectangle);
+            };
+
+            var h = irPictureBox.Handle;   // fuerza la creación del handle
         }
 
         public void ShowWindow()
         {
-            Application.Run(viewerForm); //El bloqueo de ventana se maneja aquí, el programa sigue ejecutándose hasta que se cierre la ventana
+            Application.Run(viewerForm);
         }
 
-        public void UpdateIRImage(byte[] irPixels) //Actualizar imagen IR (llamado desde el handler de Kinect)
+        //Actualizar las dos imágenes IR a la vez (A a la izquierda, B a la derecha)
+        public void UpdateIRImages(byte[] irA, byte[] irB)
         {
-            if (irPictureBox == null || irPictureBox.IsDisposed || !irPictureBox.IsHandleCreated)
-                return;
+            if (viewerForm == null || !viewerForm.IsHandleCreated) return;
 
-            Bitmap writeBuffer = useIrA ? irBufferA : irBufferB;
+            Bitmap combo = useCombo0 ? comboBuffer0 : comboBuffer1;
+            useCombo0 = !useCombo0;
 
-            // Escribir en el buffer IR
-            BitmapData bmpData = writeBuffer.LockBits(
-                new Rectangle(0, 0, Constants.IMG_WIDTH, Constants.IMG_HEIGHT),
-                ImageLockMode.WriteOnly,
-                writeBuffer.PixelFormat);
+            // Volcar A en la mitad izquierda y B en la derecha del mismo bitmap
+            EscribirMitad(combo, irA, 0);   // x offset 0
+            EscribirMitad(combo, irB, W);   // x offset W
 
-            System.Runtime.InteropServices.Marshal.Copy(irPixels, 0, bmpData.Scan0, irPixels.Length);
-            writeBuffer.UnlockBits(bmpData);
-
-            Bitmap displayBuffer = writeBuffer;
-            useIrA = !useIrA;
+            currentCombo = combo;
 
             try
             {
-                irPictureBox.Invoke((MethodInvoker)delegate
+                viewerForm.BeginInvoke((MethodInvoker)delegate
                 {
-                    irPictureBox.Image = displayBuffer;
+                    irPictureBox.Invalidate();
                 });
             }
             catch { }
         }
 
-        public void UpdateDepthImage(byte[] depthPixels) //Actualizar imagen Depth (llamado desde el handler de Kinect)
+        // Escribir un frame IR (640x480) en una mitad del bitmap combinado, con offset horizontal
+        private void EscribirMitad(Bitmap combo, byte[] irPixels, int xOffset)
         {
-            if (depthPictureBox == null || depthPictureBox.IsDisposed || !depthPictureBox.IsHandleCreated)
-                return;
-            Bitmap writeDepthBuffer = useDepthA ? depthBufferA : depthBufferB;
-
-            BitmapData bmpDataDepth = writeDepthBuffer.LockBits(
-                new Rectangle(0, 0, Constants.IMG_WIDTH, Constants.IMG_HEIGHT),
+            BitmapData d = combo.LockBits(
+                new Rectangle(xOffset, 0, W, H),
                 ImageLockMode.WriteOnly,
-                writeDepthBuffer.PixelFormat);
+                combo.PixelFormat);
 
-            System.Runtime.InteropServices.Marshal.Copy(depthPixels, 0, bmpDataDepth.Scan0, depthPixels.Length);
-            writeDepthBuffer.UnlockBits(bmpDataDepth);
-
-            Bitmap displayDepthBuffer = writeDepthBuffer;
-            useDepthA = !useDepthA;
-
-            try
+            // Copia fila a fila: el stride del bitmap combinado es el doble de ancho
+            int srcStride = W * 4;
+            for (int y = 0; y < H; y++)
             {
-                depthPictureBox.Invoke((MethodInvoker)delegate
-                {
-                    depthPictureBox.Image = displayDepthBuffer;
-                });
+                IntPtr destRow = d.Scan0 + y * d.Stride;
+                System.Runtime.InteropServices.Marshal.Copy(irPixels, y * srcStride, destRow, srcStride);
             }
-            catch { }
+            combo.UnlockBits(d);
         }
 
-
-
-
+        public bool ConsumirCaptura()
+        {
+            if (capturaSolicitada) { capturaSolicitada = false; return true; }
+            return false;
+        }
     }
 }
-
