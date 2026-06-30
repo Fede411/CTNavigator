@@ -20,12 +20,6 @@ Estructura del modulo:
       Load files  -> carga CT, biomodelo, marcador STL y crea StarBalls
       Scene nodes -> selectores de nodos ya cargados en la escena
     CONNECTION    -> PLUS/OpenIGTLink (pendiente)
-  COORDINATE VISUALIZER
-    Coordenadas XYZ del marcador en espacio tracker (simuladas)
-    Coordenadas XYZ del instrumento en espacio tracker (simuladas)
-    Boton de calculo -> salta laminas del CT a la posicion calculada
-  MOVEMENT SIMULATION
-    Trayectorias automaticas para validacion sin camara
   TOGGLES
     Opacidad del biomodelo, marcador y CT
 
@@ -44,8 +38,6 @@ Cuando llegue la camara:
   La cadena de transformadas no cambia.
 """
 
-import math
-import random
 import numpy as np
 import vtk
 import ctk
@@ -73,8 +65,8 @@ class CTNavigator(ScriptedLoadableModule):
         self.parent.helpText = (
             "Calcula la posición del lápiz en el CT a partir de:\n"
             "· Los 3 markups de las bolas IR del marcador (T_Star2CT)\n"
-            "· Coordenadas simuladas del marcador en el tracker\n"
-            "· Coordenadas simuladas del lápiz en el tracker"
+            "· La transformada del marcador en el tracker (MarkerToTracker)\n"
+            "· La transformada del lápiz en el tracker (ToolToTracker)"
         )
 
 
@@ -87,8 +79,6 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
     def setup(self):
         ScriptedLoadableModuleWidget.setup(self)
         self.logic  = CTNavigatorLogic()
-        self._timer = qt.QTimer()
-        self._timer.timeout.connect(self._tick)
         self._buildUI()
 
     def _buildUI(self):
@@ -180,7 +170,7 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         readBtn = qt.QPushButton("↺  Read sphere position")
         readBtn.clicked.connect(self._readBalls)
         sceneForm.addRow(readBtn)
-        
+
         #CONNECTION
         connBox = ctk.ctkCollapsibleButton()
         connBox.text = "CONNECTION"
@@ -188,6 +178,7 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         setupLayout.addWidget(connBox)
         connForm = qt.QFormLayout(connBox)
 
+        # PLUS/OpenIGTLink - todavía pendiente
         self.trackBtn = qt.QPushButton("▶  Start tracking")
         self.trackBtn.setCheckable(True)
         self.trackBtn.setStyleSheet(
@@ -220,103 +211,18 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         surgeonNote.setWordWrap(True)
         connForm.addRow(surgeonNote)
 
-        #Visualizador de las coordenadas - por ahora es un input manual
-        starGroup = qt.QGroupBox("COORDINATE VISUALIZER")
-        starGroup.setSizePolicy(qt.QSizePolicy.Preferred, qt.QSizePolicy.Fixed)
-        starNote = qt.QLabel("Camera coordinates of the reference marker.")
-        starForm = qt.QFormLayout(starGroup)
-        layout.addWidget(starGroup)
-
-        self.starSpins = self._makeXYZSpins()
-        starForm.addRow("X (mm):", self.starSpins[0])
-        starForm.addRow("Y (mm):", self.starSpins[1])
-        starForm.addRow("Z (mm):", self.starSpins[2])   
-        starNote.setStyleSheet("color: gray; font-size: 11px;")
-        starNote.setWordWrap(True)
-        starForm.addRow(starNote)
-        
-        penNote = qt.QLabel("Camera coordinates of the instrument.")
-
-        self.penSpins = self._makeXYZSpins()
-        starForm.addRow("X (mm):", self.penSpins[0])
-        starForm.addRow("Y (mm):", self.penSpins[1])
-        starForm.addRow("Z (mm):", self.penSpins[2])
-        penNote.setStyleSheet("color: gray; font-size: 11px;")
-        penNote.setWordWrap(True)
-        starForm.addRow(penNote)
-
-        calcBtn = qt.QPushButton("Calculate instrument position in CT")
-        calcBtn.setStyleSheet(
-            "background: #2980b9; color: white; font-size: 14px;"
-            " padding: 10px; border-radius: 4px;"
-        )
-        calcBtn.clicked.connect(self._calculate)
-        starForm.addRow(calcBtn)
-
+        # Posición del instrumento en el CT (la escribe el tracking en _onToolMoved)
         self.penCtLabel = qt.QLabel("—")
         self.penCtLabel.setStyleSheet(
             "font-family: monospace; font-size: 13px; font-weight: bold;"
         )
-        starForm.addRow("Instrument in CT (RAS):", self.penCtLabel)
+        connForm.addRow("Instrument in CT (RAS):", self.penCtLabel)
 
         self.errorLabel = qt.QLabel("")
         self.errorLabel.setStyleSheet("color: #e74c3c; font-size: 11px;")
         self.errorLabel.setWordWrap(True)
-        starForm.addRow(self.errorLabel)  
-        
+        connForm.addRow(self.errorLabel)
 
-        # ── 4. Simulación ─────────────────────────────────────────────
-        simBox = ctk.ctkCollapsibleButton()
-        simBox.text = "MOVEMENT SIMULATION"
-        layout.addWidget(simBox)
-        simLayout = qt.QVBoxLayout(simBox)
-        simBox.collapsed = True
-
-        # Modo
-        modeRow = qt.QHBoxLayout()
-        modeRow.addWidget(qt.QLabel("Mode:"))
-        self.modeCombo = qt.QComboBox()
-        self.modeCombo.addItems([
-            "Random in the CT",
-            "Linear Trajectory R",
-            "Linear Trajectory A",
-            "Linear Trajectory S",
-            "Axial spiral",
-        ])
-        modeRow.addWidget(self.modeCombo)
-        simLayout.addLayout(modeRow)
-
-        # Intervalo
-        intervalRow = qt.QHBoxLayout()
-        intervalRow.addWidget(qt.QLabel("Each (ms):"))
-        self.intervalSpin = qt.QSpinBox()
-        self.intervalSpin.setRange(100, 5000)
-        self.intervalSpin.setValue(500)
-        self.intervalSpin.setSingleStep(100)
-        intervalRow.addWidget(self.intervalSpin)
-        simLayout.addLayout(intervalRow)
-
-        # Botón start/stop
-        self.simBtn = qt.QPushButton("▶  Start Simulation")
-        self.simBtn.setCheckable(True)
-        self.simBtn.setStyleSheet(
-            "QPushButton { background: #27ae60; color: white; font-size: 13px;"
-            " padding: 8px; border-radius: 4px; }"
-            "QPushButton:checked { background: #e74c3c; }"
-        )
-        self.simBtn.toggled.connect(self._onSimToggle)
-        simLayout.addWidget(self.simBtn)
-
-        simNote = qt.QLabel(
-            "The simulation fixes the marker on the tracker's origin and moves\n"
-            "the instrument in positions within the CT."
-        )
-        simNote.setStyleSheet("color: gray; font-size: 11px;")
-        simNote.setWordWrap(True)
-        simLayout.addWidget(simNote)
-
-        
-        
         #Extras, por ahora si queremos quitar algun modelo o algo
         opacityBox = ctk.ctkCollapsibleButton()
         opacityBox.text = "TOGGLES"
@@ -334,7 +240,7 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         self.modelOpacitySlider.singleStep = 0.05
         opacityForm.addRow("Biomodel:", self.modelOpacitySlider)
         self.modelOpacitySlider.valueChanged.connect(self._onBiomodelOpacity)
-        
+
         self.markerOpacitySlider = ctk.ctkSliderWidget()
         self.markerOpacitySlider.minimum = 0
         self.markerOpacitySlider.maximum = 1
@@ -350,25 +256,10 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         self.ctOpacitySlider.singleStep = 0.05
         opacityForm.addRow("CT:", self.ctOpacitySlider)
         self.ctOpacitySlider.valueChanged.connect(self._onCTOpacity)
-        
+
         layout.addStretch()
 
     # ── Helpers ───────────────────────────────────────────────────────────
-
-    def _makeXYZSpins(self):
-        spins = []
-        for _ in range(3):
-            s = qt.QDoubleSpinBox()
-            s.setRange(-1000.0, 1000.0)
-            s.setValue(0.0)
-            s.setSingleStep(1.0)
-            s.setDecimals(2)
-            s.setSuffix(" mm")
-            spins.append(s)
-        return spins
-
-    def _getXYZ(self, spins):
-        return np.array([s.value for s in spins])
 
     def _readBalls(self):
         """Lee el centroide actual de las bolas y lo muestra."""
@@ -387,64 +278,6 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         except Exception as e:
             self.centroidLabel.setText(f"Error: {e}")
 
-    def _onSimToggle(self, checked):
-        if checked:
-            self.simBtn.setText("■  Stop simulation")
-            balls = self.ballsSelector.currentNode()
-            if balls is None or balls.GetNumberOfControlPoints() < 3:
-                slicer.util.warningDisplay("Select StarBalls before simulating.")
-                self.simBtn.setChecked(False)
-                return
-            self.logic.resetTrajectory()
-            self._timer.start(self.intervalSpin.value)
-        else:
-            self.simBtn.setText("▶  Start simulation")
-            self._timer.stop()
-
-    def _oneShot(self):
-        balls = self.ballsSelector.currentNode()
-        if balls is None or balls.GetNumberOfControlPoints() < 3:
-            slicer.util.warningDisplay("Select StarBalls before simulating.")
-            return
-        self._applySimulatedPosition(balls, self.modeCombo.currentIndex)
-
-    def _tick(self):
-        balls = self.ballsSelector.currentNode()
-        if balls is None:
-            self._timer.stop()
-            return
-        self._applySimulatedPosition(balls, self.modeCombo.currentIndex)
-
-    def _applySimulatedPosition(self, balls, mode):
-        """
-        Genera coordenadas simuladas del marcador y el lápiz en el tracker
-        según el modo seleccionado y las aplica directamente.
-        """
-        vol = self.volumeSelector.currentNode()
-        bounds = [0] * 6
-        if vol:
-            vol.GetRASBounds(bounds)
-        else:
-            bounds = [-150, 150, -150, 150, -150, 150]
-
-        star_xyz = self._getXYZ(self.starSpins)
-        pen_xyz  = self.logic.nextPosition(mode, bounds)
-
-        # Actualizar spinboxes del lápiz
-        for spin, val in zip(self.penSpins, pen_xyz):
-            spin.setValue(float(val))
-
-        # Calcular y saltar
-        self.errorLabel.setText("")
-        try:
-            pen_ct = self.logic.computePenInCT(balls, star_xyz, pen_xyz)
-            self.penCtLabel.setText(
-                f"R={pen_ct[0]:+.1f}  A={pen_ct[1]:+.1f}  S={pen_ct[2]:+.1f}"
-            )
-            self.logic.jumpToRAS(pen_ct)
-        except Exception as e:
-            self.errorLabel.setText(f"⚠ Error: {e}")
-    
     def _onLoadCT(self):
         path = qt.QFileDialog.getOpenFileName(
             None, "Load CT", "", "Volume files (*.nrrd *.nii *.nii.gz *.mha *.mhd *.dcm)"
@@ -479,7 +312,7 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         node.AddControlPoint( 34.993,  -5.779, 15.913)
         node.AddControlPoint(-35.161,  -5.600, 15.928)
         slicer.util.showStatusMessage("StarBalls create with 3 points.", 3000)
-        
+
     def _onBiomodelOpacity(self, value):
         node = self.biomodelSelector.currentNode()
         if node is None:
@@ -497,7 +330,7 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         if vol is None:
             return
         slicer.util.setSliceViewerLayers(background=vol, backgroundOpacity=value)
-        
+
     def _onToggleSurgeonDisplay(self):
         """
         Toggle de la ventana secundaria para el cirujano.
@@ -515,38 +348,6 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         self._secondaryWindow = self._buildSurgeonWindow()
         self.surgeonDisplayBtn.setText("✖  Close surgeon display")
 
-    # ── Handler principal ─────────────────────────────────────────────────
-
-    def _calculate(self):
-        self.errorLabel.setText("")
-
-        balls = self.ballsSelector.currentNode()
-        if balls is None:
-            self.errorLabel.setText(
-                "⚠ Select the StarBalls list (3 markups of IR spheres)."
-            )
-            return
-        if balls.GetNumberOfControlPoints() < 3:
-            self.errorLabel.setText(
-                "⚠ StarBalls needs exactly 3 control points."
-            )
-            return
-
-        star_xyz = self._getXYZ(self.starSpins)
-        pen_xyz  = self._getXYZ(self.penSpins)
-
-        try:
-            pen_ct = self.logic.computePenInCT(balls, star_xyz, pen_xyz)
-        except Exception as e:
-            self.errorLabel.setText(f"⚠ Error: {e}")
-            return
-
-        self.penCtLabel.setText(
-            f"R={pen_ct[0]:+.1f}  A={pen_ct[1]:+.1f}  S={pen_ct[2]:+.1f}"
-        )
-        self._readBalls()
-        self.logic.jumpToRAS(pen_ct)
-        
     def _buildSurgeonWindow(self):
         """
         Crea una QMainWindow con tres qMRMLSliceWidget (Red/Yellow/Green)
@@ -600,7 +401,7 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         if getattr(self, "_secondaryWindow", None) is not None:
             self._secondaryWindow.close()
             self._secondaryWindow = None
-            
+
     def _onTrackToggle(self, checked):
         if checked:
             # Verificar StarBalls
@@ -703,65 +504,6 @@ class CTNavigatorLogic(ScriptedLoadableModuleLogic):
         slicer.modules.markups.logic().JumpSlicesToLocation(
             float(ras[0]), float(ras[1]), float(ras[2]), True
         )
-
-    TRAJECTORY_STEPS = 60
-
-    def resetTrajectory(self):
-        self._step = 0
-
-    def nextPosition(self, mode, bounds):
-        """
-        Genera la siguiente posición objetivo dentro del CT según el modo.
-        bounds = [rMin, rMax, aMin, aMax, sMin, sMax]
-        """
-        if not hasattr(self, "_step"):
-            self._step = 0
-
-        def inset(lo, hi, pct=0.10):
-            m = (hi - lo) * pct
-            return lo + m, hi - m
-
-        rLo, rHi = inset(bounds[0], bounds[1])
-        aLo, aHi = inset(bounds[2], bounds[3])
-        sLo, sHi = inset(bounds[4], bounds[5])
-        rMid = (rLo + rHi) / 2
-        aMid = (aLo + aHi) / 2
-        sMid = (sLo + sHi) / 2
-        t = self._step / self.TRAJECTORY_STEPS
-
-        if mode == 0:
-            return np.array([
-                random.uniform(rLo, rHi),
-                random.uniform(aLo, aHi),
-                random.uniform(sLo, sHi),
-            ])
-        elif mode == 1:
-            self._advanceStep()
-            return np.array([rLo + (rHi - rLo) * t, aMid, sMid])
-        elif mode == 2:
-            self._advanceStep()
-            return np.array([rMid, aLo + (aHi - aLo) * t, sMid])
-        elif mode == 3:
-            self._advanceStep()
-            return np.array([rMid, aMid, sLo + (sHi - sLo) * t])
-        elif mode == 4:
-            angle  = t * 4 * math.pi
-            radius = min(rHi - rMid, aHi - aMid) * t
-            self._advanceStep()
-            return np.array([
-                rMid + radius * math.cos(angle),
-                aMid + radius * math.sin(angle),
-                sLo  + (sHi - sLo) * t,
-            ])
-        return np.array([rMid, aMid, sMid])
-
-    def _advanceStep(self):
-        self._step = (self._step + 1) % (self.TRAJECTORY_STEPS + 1)
-
-    def _translation(self, xyz):
-        T = np.eye(4)
-        T[:3, 3] = xyz
-        return T
 
     def computeStarToCT(self, ballsNode):
         """
