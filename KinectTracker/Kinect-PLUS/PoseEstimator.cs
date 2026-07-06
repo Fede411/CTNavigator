@@ -7,8 +7,9 @@ namespace KinectTracker
 {
 	public class PoseEstimator
 	{
-		public static (Matrix<double> R, Vector3 t, float error) ComputePose(Vector3[] modelPoints, Vector3[] detectedPoints, 
-			int[] correspondences)
+		public static (Matrix<double> R, Vector3 t, float error) ComputePose(Vector3[] modelPoints, Vector3[] detectedPoints, //recibe modelo, detecciones y correspondencias.
+                                                                                                                              //calcula la transformación que lleva el modelo a las detecciones por el método de Horn/Kabsch
+            int[] correspondences)
 		{
             //Inicializamos
             Matrix<double> R = Matrix<double>.Build.DenseIdentity(3);

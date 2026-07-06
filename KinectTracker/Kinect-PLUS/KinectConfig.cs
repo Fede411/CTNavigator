@@ -197,7 +197,7 @@ namespace KinectTracker{
             TryProcessPair();
         }
 
-        private void TryProcessPair()
+        private void TryProcessPair() //comprueba que hay frame de las dos cámaras y que sus timestamps difieren menos de 15ms
         {
             byte[] snapA, snapB;
             lock (frameLock)
@@ -211,7 +211,7 @@ namespace KinectTracker{
             ProcessStereoPair(snapA, snapB);
         }
 
-        private void ProcessStereoPair(byte[] colorA, byte[] colorB)
+        private void ProcessStereoPair(byte[] colorA, byte[] colorB) //pipeline por cada par de frames sincronizados
         {
             //MODO CALIBRACIÓN
             if (mode == OperationMode.Calibration)
@@ -278,13 +278,21 @@ namespace KinectTracker{
                 current3DPoints.Add(par.p);
                 currentCentroids.Add(centroidsA[par.ia]);
             }
+            //if (current3DPoints.Count == 4)
+            //{
+            //    Console.Write("[NUBE n=4] dist: ");
+            //    for (int i = 0; i < 4; i++)
+            //        for (int j = i + 1; j < 4; j++)
+            //            Console.Write($"{Vector3.Distance(current3DPoints[i], current3DPoints[j]):F1} ");
+            //    Console.WriteLine();
+            //}
 
             //if (current3DPoints.Count > 0)
             //{
-                //Console.Write($"[3D] n={current3DPoints.Count}: ");
-                //foreach (var p in current3DPoints)
-                    //Console.Write($"({p.X:F0},{p.Y:F0},{p.Z:F0}) ");
-                //Console.WriteLine();
+            //Console.Write($"[3D] n={current3DPoints.Count}: ");
+            //foreach (var p in current3DPoints)
+            //Console.Write($"({p.X:F0},{p.Y:F0},{p.Z:F0}) ");
+            //Console.WriteLine();
             //}
 
             stats.RegisterDetection(current3DPoints.Count);
@@ -297,7 +305,7 @@ namespace KinectTracker{
             {
                 lastGoodPoseTime = now;
                 // FilteredPosition ya está actualizada por el Update de AcceptPose.
-                // Aquí pintas/envías la filtrada (lo que ya empezaste a hacer en DrawToolTip).
+                // Aquí pintas/envías la filtrada.
                 stats.RegisterPose(toolTipProcessor.LastPoseError, toolTipProcessor.ToolT);
                 stats.RegisterMatchResidual(toolTipProcessor.LastMatchResidual);
                 igtlServer.SendTransform("ToolToTracker", toolTipProcessor.ToolR, kalmanFilter.FilteredPosition);
@@ -309,6 +317,26 @@ namespace KinectTracker{
                 // Pintar la predicción sobre irPixelsA y (paso 5) enviarla a Slicer.
                 //toolTipProcessor.DrawCoastedTip(kalmanFilter.FilteredPosition, irPixelsA);
                 igtlServer.SendTransform("MarkerToTracker", toolTipProcessor.MarkerR, toolTipProcessor.MarkerT);
+            }
+
+            if (toolTipProcessor.ToolFound && toolTipProcessor.MarkerFound)
+            {
+                var Rm = toolTipProcessor.MarkerR;          // MarkerToTracker (rotación)
+                var RmT = Rm.Transpose();                     // inversa de una rotación = traspuesta
+
+                // diferencia de traslaciones (punta filtrada − centroide del marcador)
+                Vector3 tip = kalmanFilter.FilteredPosition;
+                Vector3 mkr = toolTipProcessor.MarkerT;
+                var diff = MathNet.Numerics.LinearAlgebra.Vector<double>.Build.Dense(
+                    new double[] { tip.X - mkr.X, tip.Y - mkr.Y, tip.Z - mkr.Z });
+
+                var tNewVec = RmT * diff;                     // t_new
+                Vector3 tNew = new Vector3(
+                    (float)tNewVec[0], (float)tNewVec[1], (float)tNewVec[2]);
+
+                var Rnew = RmT * toolTipProcessor.ToolR;      // R_new
+
+                igtlServer.SendTransform("ToolToMarker", Rnew, tNew);
             }
 
             viewer.UpdateIRImages(irPixelsA, irPixelsB);

@@ -36,7 +36,7 @@ namespace KinectTracker
             this.kalmanFilter = kalmanFilter;
         }
 
-        public void Process(List<PointF> currentCentroids, List<Vector3> current3DPoints,
+        public void Process(List<PointF> currentCentroids, List<Vector3> current3DPoints, //evalua esferas por frame, busca marcador, lo excluye y luego busca instrumento
             byte[] irPixels, RigidBodyModel instrumentModel, RigidBodyModel markerModel)
         {
             Vector3[] detectionsArr = current3DPoints.ToArray();
@@ -71,7 +71,7 @@ namespace KinectTracker
                     MarkerR = markerPose.R;
                     MarkerT = markerPose.t;
                     MarkerPosition = markerPos;
-                    //DrawMarker(markerPos, markerMatch.Correspondences, currentCentroids, irPixels, depthMapper);
+                    //DrawMarker(markerPos, markerMatch.Correspondences, currentCentroids, irPixels);
 
                     Console.WriteLine($"  MARKER! error={markerPose.error:F2}mm  pos=({markerPos.X:F1}, {markerPos.Y:F1}, {markerPos.Z:F1}) mm");
 
@@ -81,7 +81,7 @@ namespace KinectTracker
             }
 
             //2. Buscar el instrumento (4 esferas) entre las detecciones restantes
-            MatchResult matchResult = GeometryMatcher.Match(instrumentDetections, instrumentModel, 5.0f, instrumentModel.SphereCount);
+            MatchResult matchResult = GeometryMatcher.Match(instrumentDetections, instrumentModel, 15.0f, instrumentModel.SphereCount);
 
             if (matchResult.Success)
             {
@@ -93,6 +93,7 @@ namespace KinectTracker
 
                 var pose = PoseEstimator.ComputePose(
                     modelPts, instrumentDetections, matchResult.Correspondences);
+                //Console.WriteLine($"  [POSE] error={pose.error:F2}mm residual={matchResult.Residual:F2}");
 
                 var toolTipLocal = MathNet.Numerics.LinearAlgebra.Vector<double>.Build.Dense(
                     new double[] { 0, 0, 0 });
@@ -126,7 +127,16 @@ namespace KinectTracker
                      (DateTime.Now - lastMatchTime).TotalSeconds < 5)
             {
                 TryPartialMatch(instrumentDetections, currentCentroids, irPixels, instrumentModel);
+
+                // Si este frame no produjo ninguna pose, repintar la última como fantasma
+                if (!ToolFound && lastProjectedSpheres != null &&
+                    (DateTime.Now - lastMatchTime).TotalSeconds < 5)
+                {
+                    DrawGhostTip(lastToolTip, irPixels);
+                }
             }
+
+
         }
 
         // Devuelve un nuevo array sin las detecciones cuyos índices están en toExclude
@@ -142,7 +152,7 @@ namespace KinectTracker
             return result.ToArray();
         }
 
-        private void AcceptPose((Matrix<double> R, Vector3 t, float error) pose,
+        private void AcceptPose((Matrix<double> R, Vector3 t, float error) pose, //pose válida, expone error y dibuja tooltip
             Vector3 toolTip, List<PointF> currentCentroids, byte[] irPixels,
             RigidBodyModel instrumentModel)
         {
@@ -167,7 +177,7 @@ namespace KinectTracker
             DrawToolTip(kalmanFilter.FilteredPosition, currentCentroids, irPixels);
         }
 
-        private void TryPartialMatch(Vector3[] detections, List<PointF> currentCentroids,
+        private void TryPartialMatch(Vector3[] detections, List<PointF> currentCentroids, //pipeline con 2 o 3 esferas
             byte[] irPixels, RigidBodyModel instrumentModel)
         {
             int[] partialCorrespondences = new int[4];
@@ -278,6 +288,12 @@ namespace KinectTracker
         {
             var (tx, ty) = StereoDepthMapper.Project2D(tip);
             ImageUtils.DrawCircle(irPixels, tx, ty, 5, 255, 128, 0);  // naranja: distinguir de la punta roja real
+        }
+
+        private void DrawGhostTip(Vector3 tip, byte[] irPixels)
+        {
+            var (tx, ty) = StereoDepthMapper.Project2D(tip);
+            ImageUtils.DrawCircle(irPixels, tx, ty, 5, 128, 128, 128);  // gris: pose vieja, no fiable
         }
 
         private void DrawMarker(Vector3 markerPos, int[] correspondences,

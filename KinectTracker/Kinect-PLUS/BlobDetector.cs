@@ -11,7 +11,7 @@ namespace KinectTracker
 {
     public class BlobDetector
     {
-        public List<Blob2DInfo> DetectBlobs(byte[] irPixels, out RejectionCounts rejections)
+        public List<Blob2DInfo> DetectBlobs(byte[] irPixels, out RejectionCounts rejections) //procesa la imagen IR y devuelve los centroides de los blobs detectados
         {
             List<Blob2DInfo> centroids = new List<Blob2DInfo>();
             rejections = new RejectionCounts();

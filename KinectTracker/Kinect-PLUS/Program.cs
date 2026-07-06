@@ -14,23 +14,38 @@ namespace KinectTracker
             Console.WriteLine("=== Kinect IR + Depth Viewer ===\n");
 
 
-            Console.WriteLine("Modo: 1 = Normal, 2 = Perfilado, 3 = Calibración");
-            string opt = Console.ReadLine();
-
             OperationMode mode = OperationMode.Normal;
             float knownDistance = 0;
 
-            if (opt == "2")
+            if (args.Length > 0)
             {
-                mode = OperationMode.Profiling;
-                Console.WriteLine("Distancia conocida de la bola (mm):");
-                float.TryParse(Console.ReadLine(), out knownDistance);
+                // Modo por argumento (lanzado desde Slicer)
+                switch (args[0].ToLower())
+                {
+                    case "normal": mode = OperationMode.Normal; break;
+                    case "profiling": mode = OperationMode.Profiling; break;
+                    case "calibration": mode = OperationMode.Calibration; break;
+                }
+                // Perfilado necesita la distancia; segundo argumento opcional
+                if (mode == OperationMode.Profiling && args.Length > 1)
+                    float.TryParse(args[1], out knownDistance);
             }
-
-            if (opt == "3")
+            else
             {
-                mode = OperationMode.Calibration;
-                Console.WriteLine("¡A calibrar se ha dicho! (Pusla ESPACIO para guardar imagenes en C:/calib)");
+                // Menú de consola (ejecución manual)
+                Console.WriteLine("Modo: 1 = Normal, 2 = Perfilado, 3 = Calibración");
+                string opt = Console.ReadLine();
+                if (opt == "2")
+                {
+                    mode = OperationMode.Profiling;
+                    Console.WriteLine("Distancia conocida de la bola (mm):");
+                    float.TryParse(Console.ReadLine(), out knownDistance);
+                }
+                if (opt == "3")
+                {
+                    mode = OperationMode.Calibration;
+                    Console.WriteLine("¡A calibrar se ha dicho! (Pusla ESPACIO para guardar imagenes en C:/calib)");
+                }
             }
 
 

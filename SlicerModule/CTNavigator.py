@@ -8,7 +8,7 @@
 # [3] Sevilla Garcia et al., "3D Slicer Module Implementation in Python",
 #     BSEL-UC3M / IGT Workshop (2025)
 
-CTNavigator - 3D Slicer Module (v1)
+CTNavigator - 3D Slicer Module (v2)
 =====================================
 Modulo de navegacion quirurgica para CT. Calcula la posicion del
 instrumento en el CT a partir de la posicion del marcador estrella
@@ -26,16 +26,6 @@ Estructura del modulo:
 Cadena de transformadas:
   T_Star2CT  = centroide de los 3 markups StarBalls en espacio CT
   T_CT_pen   = inv(T_Star2CT) * inv(T_Tracker2Star) * T_Tracker2Pen
-
-Geometria del marcador estrella al importarlo (coordenadas locales, mm):
-  Bola 1:  ( 1.139,  55.872, 15.805)
-  Bola 2:  (34.993,  -5.779, 15.913)
-  Bola 3:  (-35.161, -5.600, 15.928)
-  Enrosque: 10.903 mm altura, bola IR 13 mm diametro
-
-Cuando llegue la camara:
-  Sustituir los spinboxes por transforms de PLUS/OpenIGTLink.
-  La cadena de transformadas no cambia.
 """
 
 import numpy as np
@@ -97,36 +87,15 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         setupLayout.addWidget(loadBox)
         loadLayout = qt.QVBoxLayout(loadBox)
 
-        #Load files
-        loadFilesBox = ctk.ctkCollapsibleButton()
-        loadFilesBox.text = "Load files"
-        loadFilesBox.collapsed = True
-        loadLayout.addWidget(loadFilesBox)
-        loadFilesForm = qt.QFormLayout(loadFilesBox)
+        # Load + selector fusionados: cada fila carga de disco y auto-selecciona el node.
+        # El selector queda debajo por si abres una escena ya guardada con los nodes dentro.
+        loadFilesForm = qt.QFormLayout()
+        loadLayout.addLayout(loadFilesForm)
 
+        #CT
         self.loadCTBtn = qt.QPushButton("Load CT...")
         self.loadCTBtn.clicked.connect(self._onLoadCT)
         loadFilesForm.addRow(self.loadCTBtn)
-
-        self.loadBiomodelBtn = qt.QPushButton("Load Biomodel...")
-        self.loadBiomodelBtn.clicked.connect(self._onLoadBiomodel)
-        loadFilesForm.addRow(self.loadBiomodelBtn)
-
-        self.loadMarkerBtn = qt.QPushButton("Load Marker...")
-        self.loadMarkerBtn.clicked.connect(self._onLoadMarker)
-        loadFilesForm.addRow(self.loadMarkerBtn)
-
-        self.createStarBallsBtn = qt.QPushButton("Create StarBalls...")
-        self.createStarBallsBtn.clicked.connect(self._onCreateStarBalls)
-        loadFilesForm.addRow(self.createStarBallsBtn)
-
-        #Scene nodes
-        sceneBox = ctk.ctkCollapsibleButton()
-        sceneBox.text = "Select scene nodes"
-        sceneBox.collapsed = True
-        loadLayout.addWidget(sceneBox)
-        sceneForm = qt.QFormLayout(sceneBox)
-
         self.volumeSelector = slicer.qMRMLNodeComboBox()
         self.volumeSelector.nodeTypes              = ["vtkMRMLScalarVolumeNode"]
         self.volumeSelector.selectNodeUponCreation = True
@@ -134,17 +103,12 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         self.volumeSelector.removeEnabled          = False
         self.volumeSelector.noneEnabled            = True
         self.volumeSelector.setMRMLScene(slicer.mrmlScene)
-        sceneForm.addRow("CT Volume:", self.volumeSelector)
+        loadFilesForm.addRow("CT Volume:", self.volumeSelector)
 
-        self.ballsSelector = slicer.qMRMLNodeComboBox()
-        self.ballsSelector.nodeTypes              = ["vtkMRMLMarkupsFiducialNode"]
-        self.ballsSelector.selectNodeUponCreation = False
-        self.ballsSelector.addEnabled             = False
-        self.ballsSelector.removeEnabled          = False
-        self.ballsSelector.noneEnabled            = True
-        self.ballsSelector.setMRMLScene(slicer.mrmlScene)
-        sceneForm.addRow("IR Spheres (StarBalls):", self.ballsSelector)
-
+        #Biomodel
+        self.loadBiomodelBtn = qt.QPushButton("Load Biomodel...")
+        self.loadBiomodelBtn.clicked.connect(self._onLoadBiomodel)
+        loadFilesForm.addRow(self.loadBiomodelBtn)
         self.biomodelSelector = slicer.qMRMLNodeComboBox()
         self.biomodelSelector.nodeTypes              = ["vtkMRMLSegmentationNode"]
         self.biomodelSelector.selectNodeUponCreation = False
@@ -152,8 +116,12 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         self.biomodelSelector.removeEnabled          = False
         self.biomodelSelector.noneEnabled            = True
         self.biomodelSelector.setMRMLScene(slicer.mrmlScene)
-        sceneForm.addRow("Biomodel (mask):", self.biomodelSelector)
+        loadFilesForm.addRow("Biomodel (mask):", self.biomodelSelector)
 
+        #Reference marker
+        self.loadMarkerBtn = qt.QPushButton("Load Marker...")
+        self.loadMarkerBtn.clicked.connect(self._onLoadMarker)
+        loadFilesForm.addRow(self.loadMarkerBtn)
         self.markerModelSelector = slicer.qMRMLNodeComboBox()
         self.markerModelSelector.nodeTypes              = ["vtkMRMLModelNode"]
         self.markerModelSelector.selectNodeUponCreation = False
@@ -161,15 +129,41 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         self.markerModelSelector.removeEnabled          = False
         self.markerModelSelector.noneEnabled            = True
         self.markerModelSelector.setMRMLScene(slicer.mrmlScene)
-        sceneForm.addRow("Reference marker (STL):", self.markerModelSelector)
+        loadFilesForm.addRow("Reference marker (STL):", self.markerModelSelector)
+
+        #Instrument (STL que se mueve en 3D con la pose ToolToCT)
+        self.loadInstrumentBtn = qt.QPushButton("Load Instrument...")
+        self.loadInstrumentBtn.clicked.connect(self._onLoadInstrument)
+        loadFilesForm.addRow(self.loadInstrumentBtn)
+        self.instrumentSelector = slicer.qMRMLNodeComboBox()
+        self.instrumentSelector.nodeTypes              = ["vtkMRMLModelNode"]
+        self.instrumentSelector.selectNodeUponCreation = False
+        self.instrumentSelector.addEnabled             = False
+        self.instrumentSelector.removeEnabled          = False
+        self.instrumentSelector.noneEnabled            = True
+        self.instrumentSelector.setMRMLScene(slicer.mrmlScene)
+        loadFilesForm.addRow("Instrument (STL):", self.instrumentSelector)
+
+        #StarBalls
+        self.createStarBallsBtn = qt.QPushButton("Create StarBalls...")
+        self.createStarBallsBtn.clicked.connect(self._onCreateStarBalls)
+        loadFilesForm.addRow(self.createStarBallsBtn)
+        self.ballsSelector = slicer.qMRMLNodeComboBox()
+        self.ballsSelector.nodeTypes              = ["vtkMRMLMarkupsFiducialNode"]
+        self.ballsSelector.selectNodeUponCreation = False
+        self.ballsSelector.addEnabled             = False
+        self.ballsSelector.removeEnabled          = False
+        self.ballsSelector.noneEnabled            = True
+        self.ballsSelector.setMRMLScene(slicer.mrmlScene)
+        loadFilesForm.addRow("IR Spheres (StarBalls):", self.ballsSelector)
 
         self.centroidLabel = qt.QLabel("—")
         self.centroidLabel.setStyleSheet("font-family: monospace; font-size: 11px; color: gray;")
-        sceneForm.addRow("Centroid of spheres in IR:", self.centroidLabel)
+        loadFilesForm.addRow("Centroid of spheres in IR:", self.centroidLabel)
 
         readBtn = qt.QPushButton("↺  Read sphere position")
         readBtn.clicked.connect(self._readBalls)
-        sceneForm.addRow(readBtn)
+        loadFilesForm.addRow(readBtn)
 
         #CONNECTION
         connBox = ctk.ctkCollapsibleButton()
@@ -178,7 +172,27 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         setupLayout.addWidget(connBox)
         connForm = qt.QFormLayout(connBox)
 
-        # PLUS/OpenIGTLink - todavía pendiente
+        self.modeCombo = qt.QComboBox()
+        self.modeCombo.addItem("Normal",      "normal")
+        self.modeCombo.addItem("Ball Profiling",   "profiling")
+        self.modeCombo.addItem("Calibration", "calibration")
+        connForm.addRow("Mode:", self.modeCombo)
+
+        self.connectBtn = qt.QPushButton("🔌  Connect")
+        self.connectBtn.setCheckable(True)
+        self.connectBtn.setStyleSheet(
+            "QPushButton { background: #27ae60; color: white; font-size: 13px;"
+            " padding: 8px; border-radius: 4px; }"
+            "QPushButton:checked { background: #e74c3c; }"
+        )
+        self.connectBtn.toggled.connect(self._onConnectToggle)
+        connForm.addRow(self.connectBtn)
+        
+        self.connStatusLabel = qt.QLabel("● desconectado")
+        self.connStatusLabel.setStyleSheet("color: gray; font-size: 11px;")
+        connForm.addRow(self.connStatusLabel)
+        
+        # OpenIGTLink
         self.trackBtn = qt.QPushButton("▶  Start tracking")
         self.trackBtn.setCheckable(True)
         self.trackBtn.setStyleSheet(
@@ -283,21 +297,45 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
             None, "Load CT", "", "Volume files (*.nrrd *.nii *.nii.gz *.mha *.mhd *.dcm)"
         )
         if path:
-            slicer.util.loadVolume(path)
+            node = slicer.util.loadVolume(path)
+            self.volumeSelector.setCurrentNode(node)   # auto-selección
 
     def _onLoadBiomodel(self):
         path = qt.QFileDialog.getOpenFileName(
             None, "Load Biomodel", "", "Model files (*.stl *.vtk *.obj *.ply)"
         )
         if path:
-            slicer.util.loadSegmentation(path)
+            node = slicer.util.loadSegmentation(path)
+            self.biomodelSelector.setCurrentNode(node)   # auto-selección
 
     def _onLoadMarker(self):
         path = qt.QFileDialog.getOpenFileName(
             None, "Load Marker STL", "", "Model files (*.stl *.vtk *.obj)"
         )
         if path:
-            slicer.util.loadModel(path)
+            node = slicer.util.loadModel(path)
+            self.markerModelSelector.setCurrentNode(node)   # auto-selección
+
+    def _onLoadInstrument(self):
+        # STL del instrumento en coordenadas locales (punta = origen, igual que en C#).
+        # Se pinta amarillo, se ve solo en 3D y se cuelga del transform ToolToCT,
+        # que el tracking actualiza en cada frame para moverlo en tiempo real.
+        path = qt.QFileDialog.getOpenFileName(
+            None, "Load Instrument STL", "", "Model files (*.stl *.vtk *.obj)"
+        )
+        if not path:
+            return
+        node = slicer.util.loadModel(path)
+        self.instrumentSelector.setCurrentNode(node)   # auto-selección
+
+        disp = node.GetDisplayNode()
+        if disp is not None:
+            disp.SetColor(1.0, 1.0, 0.0)   # amarillo
+            disp.SetVisibility2D(False)    # solo en 3D, no en los cortes
+
+        # Colgar el modelo del transform ToolToCT (lo crea si no existe todavía)
+        toolToCT = self.logic.getOrCreateTransform("ToolToCT")
+        node.SetAndObserveTransformNodeID(toolToCT.GetID())
 
     def _onCreateStarBalls(self):
         # Eliminar StarBalls previo si existe
@@ -381,18 +419,9 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         win.setCentralWidget(central)
 
         # Decidir dónde mostrar la ventana
-        screens = qt.QGuiApplication.screens()
-        if len(screens) > 1:
-            # Hay un 2º monitor → fullscreen allí
-            secondaryScreen = screens[1]
-            geom = secondaryScreen.geometry()
-            win.move(geom.x(), geom.y())
-            win.showFullScreen()
-        else:
-            # Solo 1 monitor → ventana normal, tamaño razonable
-            win.resize(1200, 400)
-            win.show()
-
+        win.setCentralWidget(central)
+        win.resize(1200, 400)   
+        win.show()
         return win
 
     def cleanup(self):
@@ -401,6 +430,74 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         if getattr(self, "_secondaryWindow", None) is not None:
             self._secondaryWindow.close()
             self._secondaryWindow = None
+
+    def _onConnectToggle(self, checked):
+        if checked:
+            # Limpiar connector anterior si quedó de un intento previo
+            old = slicer.mrmlScene.GetFirstNodeByName("CTNavigatorConnector")
+            if old is not None:
+                old.Stop()
+                slicer.mrmlScene.RemoveNode(old)
+            
+            # 1. Lanzar el .exe con el modo elegido
+            arg = self.modeCombo.currentData
+            self._proc = qt.QProcess()
+            self._proc.started.connect(lambda: self._setConnStatus("proceso arrancado", "green"))
+            self._proc.errorOccurred.connect(
+                lambda e: self._setConnStatus(f"error al arrancar exe: {e}", "red"))
+            self._proc.start("cmd.exe", [
+                "/c", "start", "",
+                "C:/TFM/CTNavigator-clone/KinectTracker/Kinect-PLUS/bin/Debug/Kinect-PLUS.exe",
+                arg
+            ])
+
+            # 2. Crear y arrancar el connector (cliente hacia el server del C#)
+            self._connector = slicer.mrmlScene.AddNewNodeByClass(
+                "vtkMRMLIGTLConnectorNode", "CTNavigatorConnector")
+            self._connector.SetTypeClient("localhost", 18944)
+
+            # 3. Suscribirse a sus eventos ANTES de arrancar
+            self._connector.AddObserver(
+                slicer.vtkMRMLIGTLConnectorNode.ConnectedEvent,
+                lambda c, e: self._setConnStatus("conectado al tracker", "green"))
+            self._connector.AddObserver(
+                slicer.vtkMRMLIGTLConnectorNode.DisconnectedEvent,
+                lambda c, e: self._setConnStatus("esperando al tracker...", "orange"))
+
+            # 4. Ahora sí, arrancar
+            self._connector.Start()
+            self._setConnStatus("esperando al tracker...", "orange")
+
+            self.connectBtn.setText("🔌  Disconnect")
+        else:
+            # Parar connector y proceso
+            if getattr(self, "_connector", None):
+                self._connector.Stop()
+                slicer.mrmlScene.RemoveNode(self._connector)
+                self._connector = None
+            if getattr(self, "_proc", None):
+                self._proc.kill()
+                self._proc = None
+            self.connectBtn.setText("🔌  Connect")
+
+    def _subscribeToTool(self, toolNode):
+        # Suscribir el observer al node del instrumento
+        self.trackBtn.setText("■  Stop tracking")
+        self._toolObserverTag = toolNode.AddObserver(
+            slicer.vtkMRMLTransformNode.TransformModifiedEvent,
+            self._onToolMoved
+        )
+
+    @vtk.calldata_type(vtk.VTK_OBJECT)
+    def _onNodeAdded(self, caller, event, calldata):
+        # Cuando el C# empieza a enviar, el node ToolToTracker aparece en la escena
+        node = calldata
+        if node is not None and node.GetName() == "ToolToTracker":
+            self._subscribeToTool(node)
+            # Ya está enganchado; dejamos de vigilar la escena
+            if hasattr(self, "_sceneObserver"):
+                slicer.mrmlScene.RemoveObserver(self._sceneObserver)
+                del self._sceneObserver
 
     def _onTrackToggle(self, checked):
         if checked:
@@ -413,26 +510,27 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
 
             # Verificar que el node del instrumento ya llega
             toolNode = slicer.mrmlScene.GetFirstNodeByName("ToolToTracker")
-            if toolNode is None:
-                slicer.util.warningDisplay(
-                    "ToolToTracker not found. Make sure the OpenIGTLink "
-                    "connector is active and the Kinect is detecting the instrument."
-                )
-                self.trackBtn.setChecked(False)
-                return
-
-            # Suscribir el observer al node del instrumento
-            self.trackBtn.setText("■  Stop tracking")
-            self._toolObserverTag = toolNode.AddObserver(
-                slicer.vtkMRMLTransformNode.TransformModifiedEvent,
-                self._onToolMoved
-            )
+            if toolNode is not None:
+                self._subscribeToTool(toolNode)
+            else:
+                # Aún no ha llegado; nos enganchamos cuando se vea
+                self._sceneObserver = slicer.mrmlScene.AddObserver(
+                    slicer.mrmlScene.NodeAddedEvent, self._onNodeAdded)
+                self.trackBtn.setText("■  Stop tracking")
         else:
             self.trackBtn.setText("▶  Start tracking")
             # Quitar el observer
             toolNode = slicer.mrmlScene.GetFirstNodeByName("ToolToTracker")
             if toolNode is not None and hasattr(self, "_toolObserverTag"):
                 toolNode.RemoveObserver(self._toolObserverTag)
+            # Si aún estábamos esperando a que apareciera el node, dejar de vigilar la escena
+            if hasattr(self, "_sceneObserver"):
+                slicer.mrmlScene.RemoveObserver(self._sceneObserver)
+                del self._sceneObserver
+
+    def _setConnStatus(self, text, color):
+        self.connStatusLabel.setText(f"● {text}")
+        self.connStatusLabel.setStyleSheet(f"color: {color}; font-size: 11px;")
 
 
     def _onToolMoved(self, caller, event):
@@ -452,6 +550,10 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
             self.penCtLabel.setText(
                 f"R={pos[0]:+.1f}  A={pos[1]:+.1f}  S={pos[2]:+.1f}"
             )
+            # Mover el STL del instrumento en 3D (pose completa, con rotación)
+            self.logic.updateToolTransform(T_pen2ct)
+            # Pintar la punta en los cortes y saltar el corte a ella
+            self.logic.updateTipMarkup(pos)
             self.logic.jumpToRAS(pos)
         except Exception as e:
             self.errorLabel.setText(f"⚠ Error: {e}")
@@ -564,6 +666,44 @@ class CTNavigatorLogic(ScriptedLoadableModuleLogic):
 
         return R, t
 
+    def getOrCreateTransform(self, nodeName):
+        """Devuelve el transform node con ese nombre, creándolo si no existe."""
+        node = slicer.mrmlScene.GetFirstNodeByName(nodeName)
+        if node is None:
+            node = slicer.mrmlScene.AddNewNodeByClass(
+                "vtkMRMLLinearTransformNode", nodeName)
+        return node
+
+    def updateToolTransform(self, T_pen2ct):
+        """
+        Escribe la pose 4x4 del instrumento (en CT) en el transform ToolToCT.
+        El STL del instrumento cuelga de este node, así que se mueve con él.
+        """
+        node = self.getOrCreateTransform("ToolToCT")
+        vtkMat = vtk.vtkMatrix4x4()
+        for i in range(4):
+            for j in range(4):
+                vtkMat.SetElement(i, j, float(T_pen2ct[i, j]))
+        node.SetMatrixTransformToParent(vtkMat)
+
+    def updateTipMarkup(self, pos):
+        """
+        Pinta la punta como un markup de 1 punto (visible en 3D y en los cortes).
+        Lo crea la primera vez y luego solo mueve el control point.
+        """
+        node = slicer.mrmlScene.GetFirstNodeByName("TipCT")
+        if node is None:
+            node = slicer.mrmlScene.AddNewNodeByClass(
+                "vtkMRMLMarkupsFiducialNode", "TipCT")
+            node.AddControlPoint(float(pos[0]), float(pos[1]), float(pos[2]))
+            disp = node.GetDisplayNode()
+            if disp is not None:
+                disp.SetSelectedColor(1.0, 1.0, 0.0)   # amarillo, a juego con el STL
+                disp.SetPointLabelsVisibility(False)
+        else:
+            node.SetNthControlPointPositionWorld(
+                0, float(pos[0]), float(pos[1]), float(pos[2]))
+
     def _readTransform(self, nodeName):
         """
         Lee la matriz 4x4 de un transform node por nombre.
@@ -581,88 +721,3 @@ class CTNavigatorLogic(ScriptedLoadableModuleLogic):
             for j in range(4):
                 M[i, j] = vtkMat.GetElement(i, j)
         return M
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Tests
-# ─────────────────────────────────────────────────────────────────────────────
-
-class CTNavigatorTest(ScriptedLoadableModuleTest):
-
-    def setUp(self):
-        slicer.mrmlScene.Clear(0)
-
-    def runTest(self):
-        self.setUp()
-        self.test_IdentityChain()
-        self.test_TranslationChain()
-        self.test_RelativeOffset()
-
-    def _makeBalls(self, offset_xyz):
-        """
-        Crea un nodo StarBalls con 3 markups en las coordenadas locales
-        conocidas, desplazados por offset_xyz (simula la transform).
-        """
-        node = slicer.mrmlScene.AddNewNodeByClass(
-            "vtkMRMLMarkupsFiducialNode", "StarBalls"
-        )
-        local = np.array([
-            [  0.0, -55.0, 8.5],
-            [ 35.0,   5.0, 8.5],
-            [-35.0,   5.0, 8.5],
-        ])
-        for p in local:
-            node.AddControlPoint(*(p + offset_xyz))
-        return node
-
-    def test_IdentityChain(self):
-        """Marcador y lápiz en origen → lápiz en CT = offset de las bolas."""
-        self.delayDisplay("Test: cadena identidad...")
-        logic = CTNavigatorLogic()
-        balls = self._makeBalls([0.0, 0.0, 0.0])
-        pen_ct = logic.computePenInCT(
-            balls,
-            star_xyz=np.array([0.0, 0.0, 0.0]),
-            pen_xyz =np.array([10.0, 0.0, 0.0]),
-        )
-        # centroide local = (0, -15, 8.5), pen offset = (10,0,0)
-        # → pen en CT = centroide + (10,0,0) = (10, -15, 8.5)
-        expected = np.array([10.0, -15.0, 8.5])
-        np.testing.assert_allclose(pen_ct, expected, atol=1e-3)
-        self.delayDisplay("✓ test_IdentityChain OK")
-
-    def test_TranslationChain(self):
-        """
-        Marcador desplazado 100mm en R en CT.
-        Marcador en tracker en (50,0,0), lápiz en (60,0,0).
-        Offset lápiz-marcador = 10mm en R → lápiz en CT en centroide + 10mm.
-        """
-        self.delayDisplay("Test: traslación simple...")
-        logic  = CTNavigatorLogic()
-        balls  = self._makeBalls([100.0, 0.0, 0.0])
-        pen_ct = logic.computePenInCT(
-            balls,
-            star_xyz=np.array([50.0, 0.0, 0.0]),
-            pen_xyz =np.array([60.0, 0.0, 0.0]),
-        )
-        centroid = np.array([0.0, -15.0, 8.5]) + np.array([100.0, 0.0, 0.0])
-        expected = centroid + np.array([10.0, 0.0, 0.0])
-        np.testing.assert_allclose(pen_ct, expected, atol=1e-3)
-        self.delayDisplay("✓ test_TranslationChain OK")
-
-    def test_RelativeOffset(self):
-        """
-        Lo que importa es el offset relativo pen_xyz - star_xyz.
-        Offset = (5, 3, 2) → en CT: centroide + offset.
-        """
-        self.delayDisplay("Test: offset relativo...")
-        logic  = CTNavigatorLogic()
-        balls  = self._makeBalls([50.0, 0.0, 0.0])
-        pen_ct = logic.computePenInCT(
-            balls,
-            star_xyz=np.array([100.0, 0.0, 0.0]),
-            pen_xyz =np.array([105.0, 3.0, 2.0]),
-        )
-        centroid = np.array([0.0, -15.0, 8.5]) + np.array([50.0, 0.0, 0.0])
-        expected = centroid + np.array([5.0, 3.0, 2.0])
-        np.testing.assert_allclose(pen_ct, expected, atol=1e-3)
-        self.delayDisplay("✓ test_RelativeOffset OK")

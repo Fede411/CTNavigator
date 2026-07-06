@@ -8,12 +8,11 @@ namespace KinectTracker
 
         public static RigidBodyModel CreateInstrument()
         {
-            // T (tooltip) = origen local. B, C, D conservan las coords del CAD (casan con calibre <0,6mm).
-            // A reubicada por trilateración a las distancias de calibre (Anexo C): A-B 71,616 | A-C 54,74 | A-D 100,762
-            Vector3 pointA = new Vector3(-6.290f, -61.800f, -21.503f);   // corregida (sesgo heat-set ~1,8mm)
-            Vector3 pointB = new Vector3(17.930f, 4.884f, -36.219f);
-            Vector3 pointC = new Vector3(22.155f, -106.199f, -36.219f);
-            Vector3 pointD = new Vector3(-23.421f, -158.495f, -36.219f);
+            // T (tooltip) = origen local
+            Vector3 pointA = new Vector3(-35.566f, 19.285f, 142.629f);
+            Vector3 pointB = new Vector3(6.796f, -48.765f, 162.253f);
+            Vector3 pointC = new Vector3(6.460f, 54.185f, 183.059f);
+            Vector3 pointD = new Vector3(48.674f, -45.475f, 137.801f);
 
             Vector3[] insPoints = { pointA, pointB, pointC, pointD };
             return new RigidBodyModel("Instrument", insPoints, Vector3.Zero);

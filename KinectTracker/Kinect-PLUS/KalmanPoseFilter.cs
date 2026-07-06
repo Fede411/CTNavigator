@@ -33,7 +33,7 @@ namespace KinectTracker
                 P[i] = 1000.0; // incertidumbre inicial alta
         }
 
-        public void Predict(DateTime now)
+        public void Predict(DateTime now) //avanza posicion mediante velocidad y aumenta incertidumbre, sin usar mediciones
         {
             if (!initialized) return;
 
@@ -56,7 +56,7 @@ namespace KinectTracker
             FilteredPosition = new Vector3((float)state[0], (float)state[1], (float)state[2]);
         }
 
-        public void Update(Vector3 measuredPosition, Quaternion measuredRotation, DateTime now) {
+        public void Update(Vector3 measuredPosition, Quaternion measuredRotation, DateTime now) { //corrige predict con medicion nueva, da posiciones suavizadas
 
             double dt = (now - lastTime).TotalSeconds;
             if (dt < 0.01) dt = 0.033;   // en vez de solo <= 0 // fallback a 30fps

@@ -107,12 +107,12 @@ namespace KinectTracker {
         }
 
 
-        private static void Swap(int[] arr, int i, int j)
+        private static void Swap(int[] arr, int i, int j) // intercambia arr[i] con arr[j]
         {
-            (arr[i], arr[j]) = (arr[j], arr[i]); // intercambia arr[i] con arr[j]
+            (arr[i], arr[j]) = (arr[j], arr[i]); 
         }
 
-        private static bool Permute(int[] perm, int start, Vector3[] detections, SphereDistance[] distLocal, float tolerance, out MatchResult result)
+        private static bool Permute(int[] perm, int start, Vector3[] detections, SphereDistance[] distLocal, float tolerance, out MatchResult result) // permuta el array de índices 0..k-1 y prueba cada orden
         {
             result = new MatchResult(false, new int[0], float.NaN, 0, new int[0]);
 
@@ -166,6 +166,7 @@ namespace KinectTracker {
                 if (diff > tolerance)
                 {
                     {
+                        //Console.WriteLine($"  reject: modelo={sd.DistanceMm:F1} medido={dist:F1} diff={diff:F1}");
                         if (diff < 30) RejectLeve++;
                         else if (diff < 100) RejectMedio++;
                         else RejectGrave++;
