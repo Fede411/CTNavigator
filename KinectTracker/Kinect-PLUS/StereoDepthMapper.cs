@@ -9,26 +9,26 @@ namespace KinectTracker
     public static class StereoCalib
     {
         // Intrínsecos cámara A
-        public const float fxA = 584.452059f, fyA = 584.589543f;
-        public const float cxA = 311.670201f, cyA = 244.906688f;
+        public const float fxA = 589.894313f, fyA = 589.598588f;
+        public const float cxA = 312.486353f, cyA = 246.707122f;
 
         // Intrínsecos cámara B
-        public const float fxB = 585.351042f, fyB = 584.565266f;
-        public const float cxB = 318.368444f, cyB = 239.088350f;
+        public const float fxB = 596.684324f, fyB = 595.807660f;
+        public const float cxB = 315.670379f, cyB = 241.163807f;
 
         // Distorsión radial (k1, k2) de cada cámara
-        public static readonly float[] distA = { -0.059336f, 0.153701f };
-        public static readonly float[] distB = { -0.088194f, 0.236542f };
+        public static readonly float[] distA = { -0.057811f, 0.188655f };
+        public static readonly float[] distB = { -0.097193f, 0.330121f };
 
         // Rotación de B respecto a A (R) y traslación T (mm)
         // OJO con la convención de MATLAB: ver nota en el triangulador
         public static readonly Matrix4x4 R = new Matrix4x4(
-            0.999770f, -0.017605f, -0.012274f, 0f,
-            0.017857f, 0.999625f, 0.020750f, 0f,
-            0.011904f, -0.020965f, 0.999709f, 0f,
+            0.999882f, -0.006699f, 0.013799f, 0f,
+            0.007324f, 0.998926f, -0.045753f, 0f,
+            -0.013478f, 0.045848f, 0.998857f, 0f,
             0f, 0f, 0f, 1f);
 
-        public static readonly Vector3 T = new Vector3(-311.174113f, -3.381689f, 1.967511f);
+        public static readonly Vector3 T = new Vector3(-315.187789f, -4.572749f, 7.712357f);
     }
 
     public class StereoDepthMapper

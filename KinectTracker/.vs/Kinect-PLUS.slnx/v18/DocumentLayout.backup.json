@@ -7,28 +7,36 @@
       "RelativeMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|solutionrelative:kinect-plus\\processtooltip.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|c:\\tfm\\ctnavigator-clone\\kinecttracker\\kinect-plus\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|solutionrelative:kinect-plus\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|c:\\tfm\\ctnavigator-clone\\kinecttracker\\kinect-plus\\blobdetector.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|solutionrelative:kinect-plus\\blobdetector.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|C:\\TFM\\CTNavigator-clone\\KinectTracker\\kinect-plus\\kinectconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|solutionrelative:kinect-plus\\kinectconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|c:\\tfm\\ctnavigator-clone\\kinecttracker\\kinect-plus\\blob2dinfo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|solutionrelative:kinect-plus\\blob2dinfo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|c:\\tfm\\ctnavigator-clone\\kinecttracker\\kinect-plus\\openigtlinkserver.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|solutionrelative:kinect-plus\\openigtlinkserver.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|c:\\tfm\\ctnavigator-clone\\kinecttracker\\kinect-plus\\constants.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|solutionrelative:kinect-plus\\constants.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|C:\\TFM\\CTNavigator-clone\\KinectTracker\\kinect-plus\\geometrymatcher.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|solutionrelative:kinect-plus\\geometrymatcher.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|C:\\TFM\\CTNavigator-clone\\KinectTracker\\kinect-plus\\stereodepthmapper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|solutionrelative:kinect-plus\\stereodepthmapper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|C:\\TFM\\CTNavigator-clone\\KinectTracker\\kinect-plus\\geometrymatcher.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|solutionrelative:kinect-plus\\geometrymatcher.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|c:\\tfm\\ctnavigator-clone\\kinecttracker\\kinect-plus\\kinectconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|solutionrelative:kinect-plus\\kinectconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|C:\\TFM\\CTNavigator-clone\\KinectTracker\\kinect-plus\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|solutionrelative:kinect-plus\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|C:\\TFM\\CTNavigator-clone\\KinectTracker\\kinect-plus\\openigtlinkserver.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|solutionrelative:kinect-plus\\openigtlinkserver.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|C:\\TFM\\CTNavigator-clone\\KinectTracker\\kinect-plus\\constants.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|solutionrelative:kinect-plus\\constants.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|C:\\TFM\\CTNavigator-clone\\KinectTracker\\kinect-plus\\knownmodels.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -42,24 +50,37 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 5,
+          "SelectedChildIndex": 6,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "Program.cs",
-              "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\Program.cs",
-              "RelativeDocumentMoniker": "Kinect-PLUS\\Program.cs",
-              "ToolTip": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\Program.cs",
-              "RelativeToolTip": "Kinect-PLUS\\Program.cs",
-              "ViewState": "AgIAAC0AAAAAAAAAAAAUwEMAAAAWAAAAAAAAAA==",
+              "DocumentIndex": 2,
+              "Title": "Blob2DInfo.cs",
+              "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\Blob2DInfo.cs",
+              "RelativeDocumentMoniker": "Kinect-PLUS\\Blob2DInfo.cs",
+              "ToolTip": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\Blob2DInfo.cs",
+              "RelativeToolTip": "Kinect-PLUS\\Blob2DInfo.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAhAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-07-06T07:35:32.655Z",
+              "WhenOpened": "2026-07-09T11:10:25.323Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 1,
+              "Title": "BlobDetector.cs",
+              "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\BlobDetector.cs",
+              "RelativeDocumentMoniker": "Kinect-PLUS\\BlobDetector.cs",
+              "ToolTip": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\BlobDetector.cs",
+              "RelativeToolTip": "Kinect-PLUS\\BlobDetector.cs",
+              "ViewState": "AgIAADEAAAAAAAAAAAAQwEoAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-07-09T11:10:17.965Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
               "Title": "OpenIGTLinkServer.cs",
               "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\OpenIGTLinkServer.cs",
               "RelativeDocumentMoniker": "Kinect-PLUS\\OpenIGTLinkServer.cs",
@@ -67,24 +88,24 @@
               "RelativeToolTip": "Kinect-PLUS\\OpenIGTLinkServer.cs",
               "ViewState": "AgIAAC0AAAAAAAAAAAAiwEEAAAAaAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-07-06T07:22:31.815Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-07-06T07:22:31.815Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 4,
               "Title": "StereoDepthMapper.cs",
               "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\StereoDepthMapper.cs",
               "RelativeDocumentMoniker": "Kinect-PLUS\\StereoDepthMapper.cs",
               "ToolTip": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\StereoDepthMapper.cs",
               "RelativeToolTip": "Kinect-PLUS\\StereoDepthMapper.cs",
-              "ViewState": "AgIAAAgAAAAAAAAAAAAwwB4AAABaAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAAFAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-07-05T13:45:59.441Z"
+              "WhenOpened": "2026-07-05T13:45:59.441Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 9,
               "Title": "KnownModels.cs",
               "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\KnownModels.cs",
               "RelativeDocumentMoniker": "Kinect-PLUS\\KnownModels.cs",
@@ -96,15 +117,16 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 3,
               "Title": "GeometryMatcher.cs",
               "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\GeometryMatcher.cs",
               "RelativeDocumentMoniker": "Kinect-PLUS\\GeometryMatcher.cs",
               "ToolTip": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\GeometryMatcher.cs",
               "RelativeToolTip": "Kinect-PLUS\\GeometryMatcher.cs",
-              "ViewState": "AgIAAJIAAAAAAAAAAAAuwKgAAAAaAAAAAAAAAA==",
+              "ViewState": "AgIAAI8AAAAAAAAAAAAuwKgAAAAaAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-06-29T19:27:40.34Z"
+              "WhenOpened": "2026-06-29T19:27:40.34Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -114,27 +136,39 @@
               "RelativeDocumentMoniker": "Kinect-PLUS\\ProcessTooltip.cs",
               "ToolTip": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\ProcessTooltip.cs",
               "RelativeToolTip": "Kinect-PLUS\\ProcessTooltip.cs",
-              "ViewState": "AgIAAHIAAAAAAAAAAAAEwIEAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAG4AAAAAAAAAAAAewKUAAAARAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-06-29T08:40:08.359Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 5,
               "Title": "KinectConfig.cs",
               "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\KinectConfig.cs",
               "RelativeDocumentMoniker": "Kinect-PLUS\\KinectConfig.cs",
               "ToolTip": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\KinectConfig.cs",
               "RelativeToolTip": "Kinect-PLUS\\KinectConfig.cs",
-              "ViewState": "AgIAADoBAAAAgCxEh2gcwDkBAABxAAAAAAAAAA==",
+              "ViewState": "AgIAAFIAAAAAAAAAAAAmwIIAAAAjAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-06-27T15:44:05.103Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 6,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\Program.cs",
+              "RelativeDocumentMoniker": "Kinect-PLUS\\Program.cs",
+              "ToolTip": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\Program.cs",
+              "RelativeToolTip": "Kinect-PLUS\\Program.cs",
+              "ViewState": "AgIAAC0AAAAAAAAAAAAUwEMAAAAWAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-07-06T07:35:32.655Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
               "Title": "Constants.cs",
               "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\Constants.cs",
               "RelativeDocumentMoniker": "Kinect-PLUS\\Constants.cs",
@@ -142,8 +176,7 @@
               "RelativeToolTip": "Kinect-PLUS\\Constants.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAACkAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-06-29T08:34:46.917Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-06-29T08:34:46.917Z"
             }
           ]
         }

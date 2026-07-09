@@ -71,7 +71,8 @@ namespace KinectTracker
                     float cx = (float)(moments.M10 / moments.M00);
                     float cy = (float)(moments.M01 / moments.M00);
 
-                    centroids.Add(new Blob2DInfo { Centroid = new PointF(cx, cy), RadiusPx = blobRadius });
+                    //Console.WriteLine($"    blob: cx={cx:F0} cy={cy:F0} circ={circularity:F3} r={blobRadius:F1}");
+                    centroids.Add(new Blob2DInfo { Centroid = new PointF(cx, cy), RadiusPx = blobRadius, Circularity = (float)circularity });
                 }
             }
 

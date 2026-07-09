@@ -6,6 +6,7 @@ namespace KinectTracker
     {
         public PointF Centroid;
         public float RadiusPx;
+        public float Circularity;
     }
 }
 

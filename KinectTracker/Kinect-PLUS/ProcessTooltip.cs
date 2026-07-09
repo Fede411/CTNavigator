@@ -120,6 +120,38 @@ namespace KinectTracker
                         LastMatchResidual = matchResult.Residual;
                         consecutivePartials = 0;
                         AcceptPose(pose, toolTip, currentCentroids, irPixels, instrumentModel);
+
+                        // TEMP: validar calibración midiendo distancias entre bolas trianguladas
+                        // Correspondences[i] empareja modelSpheres[i] con instrumentDetections[Correspondences[i]]
+                        {
+                            var ms = matchResult.ModelSpheres;
+                            var co = matchResult.Correspondences;
+                            for (int a = 0; a < ms.Length; a++)
+                            {
+                                if (ms[a] == 0)   // esfera A
+                                {
+                                    Vector3 pA = instrumentDetections[co[a]];
+                                    Console.WriteLine($"    A_cruda: X={pA.X:F2} Y={pA.Y:F2} Z={pA.Z:F2}");
+                                }
+
+                                if (ms[a] == 3)   // esfera D
+                                {
+                                    var (dx, dy) = StereoDepthMapper.Project2D(instrumentDetections[co[a]]);
+                                    Console.WriteLine($"    D en 2D: cx={dx} cy={dy}");
+                                }
+
+                                for (int b = a + 1; b < ms.Length; b++)
+                                {
+                                    Vector3 pa = instrumentDetections[co[a]];
+                                    Vector3 pb = instrumentDetections[co[b]];
+                                    float medido = Vector3.Distance(pa, pb);
+                                    float teorico = Vector3.Distance(
+                                        instrumentModel.LocalSpheres[ms[a]],
+                                        instrumentModel.LocalSpheres[ms[b]]);
+                                    Console.WriteLine($"    dist esf {ms[a]}-{ms[b]}: medido={medido:F2}  teorico={teorico:F2}  diff={medido - teorico:+0.00}");
+                                }
+                            }
+                        }
                     }
                 }
             }
