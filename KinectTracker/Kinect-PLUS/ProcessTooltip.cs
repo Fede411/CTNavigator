@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Numerics;
 using MathNet.Numerics.LinearAlgebra;
+using System.Media;
 
 namespace KinectTracker
 {
@@ -205,6 +206,7 @@ namespace KinectTracker
             // El cambio se ha mantenido: confirmamos transicion y sonamos
             toolAudioState = trackingNow;
             framesSinceStateChange = 0;
+            //Console.WriteLine($"[AUDIO] transicion -> {(trackingNow ? "ENCONTRADO" : "PERDIDO")}");
 
             try
             {
