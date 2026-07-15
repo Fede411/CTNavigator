@@ -9,10 +9,10 @@ namespace KinectTracker
         public static RigidBodyModel CreateInstrument()
         {
             // T (tooltip) = origen local
-            Vector3 pointA = new Vector3(-35.566f, 19.285f, 142.629f);
-            Vector3 pointB = new Vector3(6.796f, -48.765f, 162.253f);
-            Vector3 pointC = new Vector3(6.460f, 54.185f, 183.059f);
-            Vector3 pointD = new Vector3(48.674f, -45.475f, 137.801f);
+            Vector3 pointA = new Vector3(-45.226f, 21.337f, 160.149f);
+            Vector3 pointB = new Vector3(44.870f, 37.027f, 176.869f);
+            Vector3 pointC = new Vector3(-17.633f, -49.408f, 194.446f);
+            Vector3 pointD = new Vector3(-24.659f, -33.217f, 163.205f);
 
             Vector3[] insPoints = { pointA, pointB, pointC, pointD };
             return new RigidBodyModel("Instrument", insPoints, Vector3.Zero);

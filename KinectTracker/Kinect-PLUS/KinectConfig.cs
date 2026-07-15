@@ -296,10 +296,10 @@ namespace KinectTracker{
             //}
 
             stats.RegisterDetection(current3DPoints.Count);
+            DateTime now = DateTime.Now;
+            kalmanFilter.Predict(now);
             toolTipProcessor.Process(currentCentroids, current3DPoints, irPixelsA,
                                      instrumentModel, markerModel);
-
-            DateTime now = DateTime.Now;
 
         if (toolTipProcessor.ToolFound)
             {
@@ -313,8 +313,6 @@ namespace KinectTracker{
 
             if (toolTipProcessor.MarkerFound)
             {
-                kalmanFilter.Predict(now);
-                // Pintar la predicción sobre irPixelsA y (paso 5) enviarla a Slicer.
                 //toolTipProcessor.DrawCoastedTip(kalmanFilter.FilteredPosition, irPixelsA);
                 igtlServer.SendTransform("MarkerToTracker", toolTipProcessor.MarkerR, toolTipProcessor.MarkerT);
             }

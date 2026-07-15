@@ -92,14 +92,28 @@ namespace KinectTracker
                 Console.WriteLine($"  {i} detecciones: {DetectionHistogram[i]} ({pct:F1}%)");
             }
 
-            int framesN4 = DetectionHistogram[4];
+            // Un match completo puede salir de cualquier frame con AL MENOS 4 detecciones
+            // (no solo de los que tienen exactamente 4), de ahi que antes salieran >100%
+            int framesN4 = 0;
+            for (int i = 4; i < DetectionHistogram.Length; i++)
+                framesN4 += DetectionHistogram[i];
+
             double matchPctGlobal = FramesProcessed > 0 ? 100.0 * ttp.MatchesSuccessful / FramesProcessed : 0;
             double matchPctN4 = framesN4 > 0 ? 100.0 * ttp.MatchesSuccessful / framesN4 : 0;
-            Console.WriteLine($"Matches exitosos: {ttp.MatchesSuccessful} ({matchPctGlobal:F1}% global, {matchPctN4:F1}% de n=4)");
+            Console.WriteLine($"Matches exitosos: {ttp.MatchesSuccessful} ({matchPctGlobal:F1}% global, {matchPctN4:F1}% de n>=4)");
             Console.WriteLine($"Partial matches (3/4): {ttp.PartialMatchesSuccessful}");
             int totalPoses = ttp.MatchesSuccessful + ttp.PartialMatchesSuccessful;
             double posesPct = FramesProcessed > 0 ? 100.0 * totalPoses / FramesProcessed : 0;
             Console.WriteLine($"Total poses: {totalPoses} ({posesPct:F1}% global)");
+
+            // Coasting: frames sin pose que se han extrapolado, y los que ya se dan por perdidos
+            double coastPct = FramesProcessed > 0 ? 100.0 * ttp.FramesCoastedTotal / FramesProcessed : 0;
+            double lostPct = FramesProcessed > 0 ? 100.0 * ttp.FramesLostTotal / FramesProcessed : 0;
+            Console.WriteLine($"Frames coasteados: {ttp.FramesCoastedTotal} ({coastPct:F1}% global)");
+            Console.WriteLine($"Frames perdidos (sin coasting): {ttp.FramesLostTotal} ({lostPct:F1}% global)");
+            double coveragePct = FramesProcessed > 0 ? 100.0 * (totalPoses + ttp.FramesCoastedTotal) / FramesProcessed : 0;
+            Console.WriteLine($"Cobertura (poses + coasting): {coveragePct:F1}% global");
+
             double markerPct = FramesProcessed > 0 ? 100.0 * ttp.MarkerMatchesSuccessful / FramesProcessed : 0;
             Console.WriteLine($"Marcador detectado: {ttp.MarkerMatchesSuccessful} ({markerPct:F1}% global)");
 
@@ -108,6 +122,8 @@ namespace KinectTracker
             Console.WriteLine($"Rechazos por aspecto: {Rejections.ByAspect}");
             Console.WriteLine($"Rechazos por falta de profundidad: {Rejections.ByNoDepth}");
             Console.WriteLine($"Rechazos por tamaño Z incompatible: {Rejections.ByZSize}");
+            Console.WriteLine($"Detecciones aisladas descartadas (clustering): {ttp.ClusterRejected}");
+            Console.WriteLine($"Detecciones descartadas por prediccion: {ttp.PredictionRejected}");
 
             int totalRej = GeometryMatcher.RejectLeve + GeometryMatcher.RejectMedio + GeometryMatcher.RejectGrave;
             if (totalRej > 0)

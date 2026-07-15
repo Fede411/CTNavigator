@@ -69,228 +69,67 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
     def setup(self):
         ScriptedLoadableModuleWidget.setup(self)
         self.logic  = CTNavigatorLogic()
-        self._buildUI()
 
-    def _buildUI(self):
-        layout = self.layout
+        # La interfaz vive en Resources/UI/CTNavigator.ui, editable con Qt Designer.
+        # Aqui solo se carga, se conectan las senales y se hace lo que el .ui no puede:
+        # pasar la escena MRML a los combos y rellenar el desplegable de modo.
+        uiWidget = slicer.util.loadUI(self.resourcePath('UI/CTNavigator.ui'))
+        self.layout.addWidget(uiWidget)
+        self.ui = slicer.util.childWidgetVariables(uiWidget)
+        uiWidget.setMRMLScene(slicer.mrmlScene)
 
-        #Carga de archivos
-        #SETUP
-        setupBox = ctk.ctkCollapsibleButton()
-        setupBox.text = "SETUP"
-        layout.addWidget(setupBox)
-        setupLayout = qt.QVBoxLayout(setupBox)
-
-        #LOAD
-        loadBox = ctk.ctkCollapsibleButton()
-        loadBox.text = "LOAD"
-        setupLayout.addWidget(loadBox)
-        loadLayout = qt.QVBoxLayout(loadBox)
-
-        # Load + selector fusionados: cada fila carga de disco y auto-selecciona el node.
-        # El selector queda debajo por si abres una escena ya guardada con los nodes dentro.
-        loadFilesForm = qt.QFormLayout()
-        loadLayout.addLayout(loadFilesForm)
-
-        #CT
-        self.loadCTBtn = qt.QPushButton("Load CT...")
-        self.loadCTBtn.clicked.connect(self._onLoadCT)
-        loadFilesForm.addRow(self.loadCTBtn)
-        self.volumeSelector = slicer.qMRMLNodeComboBox()
-        self.volumeSelector.nodeTypes              = ["vtkMRMLScalarVolumeNode"]
-        self.volumeSelector.selectNodeUponCreation = True
-        self.volumeSelector.addEnabled             = False
-        self.volumeSelector.removeEnabled          = False
-        self.volumeSelector.noneEnabled            = True
-        self.volumeSelector.setMRMLScene(slicer.mrmlScene)
-        loadFilesForm.addRow("CT Volume:", self.volumeSelector)
-
-        #Biomodel
-        self.loadBiomodelBtn = qt.QPushButton("Load Biomodel...")
-        self.loadBiomodelBtn.clicked.connect(self._onLoadBiomodel)
-        loadFilesForm.addRow(self.loadBiomodelBtn)
-        self.biomodelSelector = slicer.qMRMLNodeComboBox()
-        self.biomodelSelector.nodeTypes              = ["vtkMRMLSegmentationNode"]
-        self.biomodelSelector.selectNodeUponCreation = False
-        self.biomodelSelector.addEnabled             = False
-        self.biomodelSelector.removeEnabled          = False
-        self.biomodelSelector.noneEnabled            = True
-        self.biomodelSelector.setMRMLScene(slicer.mrmlScene)
-        loadFilesForm.addRow("Biomodel (mask):", self.biomodelSelector)
-
-        #Reference marker
-        self.loadMarkerBtn = qt.QPushButton("Load Marker...")
-        self.loadMarkerBtn.clicked.connect(self._onLoadMarker)
-        loadFilesForm.addRow(self.loadMarkerBtn)
-        self.markerModelSelector = slicer.qMRMLNodeComboBox()
-        self.markerModelSelector.nodeTypes              = ["vtkMRMLModelNode"]
-        self.markerModelSelector.selectNodeUponCreation = False
-        self.markerModelSelector.addEnabled             = False
-        self.markerModelSelector.removeEnabled          = False
-        self.markerModelSelector.noneEnabled            = True
-        self.markerModelSelector.setMRMLScene(slicer.mrmlScene)
-        loadFilesForm.addRow("Reference marker (STL):", self.markerModelSelector)
-
-        #Instrument (STL que se mueve en 3D con la pose ToolToCT)
-        self.loadInstrumentBtn = qt.QPushButton("Load Instrument...")
-        self.loadInstrumentBtn.clicked.connect(self._onLoadInstrument)
-        loadFilesForm.addRow(self.loadInstrumentBtn)
-        self.instrumentSelector = slicer.qMRMLNodeComboBox()
-        self.instrumentSelector.nodeTypes              = ["vtkMRMLModelNode"]
-        self.instrumentSelector.selectNodeUponCreation = False
-        self.instrumentSelector.addEnabled             = False
-        self.instrumentSelector.removeEnabled          = False
-        self.instrumentSelector.noneEnabled            = True
-        self.instrumentSelector.setMRMLScene(slicer.mrmlScene)
-        loadFilesForm.addRow("Instrument (STL):", self.instrumentSelector)
-
-        #StarBalls
-        self.createStarBallsBtn = qt.QPushButton("Create StarBalls...")
-        self.createStarBallsBtn.clicked.connect(self._onCreateStarBalls)
-        loadFilesForm.addRow(self.createStarBallsBtn)
-        self.ballsSelector = slicer.qMRMLNodeComboBox()
-        self.ballsSelector.nodeTypes              = ["vtkMRMLMarkupsFiducialNode"]
-        self.ballsSelector.selectNodeUponCreation = False
-        self.ballsSelector.addEnabled             = False
-        self.ballsSelector.removeEnabled          = False
-        self.ballsSelector.noneEnabled            = True
-        self.ballsSelector.setMRMLScene(slicer.mrmlScene)
-        loadFilesForm.addRow("IR Spheres (StarBalls):", self.ballsSelector)
-
-        self.centroidLabel = qt.QLabel("—")
-        self.centroidLabel.setStyleSheet("font-family: monospace; font-size: 11px; color: gray;")
-        loadFilesForm.addRow("Centroid of spheres in IR:", self.centroidLabel)
-
-        readBtn = qt.QPushButton("↺  Read sphere position")
-        readBtn.clicked.connect(self._readBalls)
-        loadFilesForm.addRow(readBtn)
-
-        #CONNECTION
-        connBox = ctk.ctkCollapsibleButton()
-        connBox.text = "CONNECTION"
-        connBox.collapsed = True
-        setupLayout.addWidget(connBox)
-        connForm = qt.QFormLayout(connBox)
-
-        self.modeCombo = qt.QComboBox()
-        self.modeCombo.addItem("Normal",      "normal")
-        self.modeCombo.addItem("Ball Profiling",   "profiling")
-        self.modeCombo.addItem("Calibration", "calibration")
-        connForm.addRow("Mode:", self.modeCombo)
-
-        self.connectBtn = qt.QPushButton("🔌  Connect")
-        self.connectBtn.setCheckable(True)
-        self.connectBtn.setStyleSheet(
-            "QPushButton { background: #27ae60; color: white; font-size: 13px;"
-            " padding: 8px; border-radius: 4px; }"
-            "QPushButton:checked { background: #e74c3c; }"
-        )
-        self.connectBtn.toggled.connect(self._onConnectToggle)
-        connForm.addRow(self.connectBtn)
-        
-        self.connStatusLabel = qt.QLabel("● desconectado")
-        self.connStatusLabel.setStyleSheet("color: gray; font-size: 11px;")
-        connForm.addRow(self.connStatusLabel)
-        
-        # OpenIGTLink
-        self.trackBtn = qt.QPushButton("▶  Start tracking")
-        self.trackBtn.setCheckable(True)
-        self.trackBtn.setStyleSheet(
-            "QPushButton { background: #27ae60; color: white; font-size: 13px;"
-            " padding: 8px; border-radius: 4px; }"
-            "QPushButton:checked { background: #e74c3c; }"
-        )
-        self.trackBtn.toggled.connect(self._onTrackToggle)
-        connForm.addRow(self.trackBtn)
-
-        connNote = qt.QLabel(
-            "Reads MarkerToTracker and ToolToTracker from the OpenIGTLink\n"
-            "connector and updates the instrument position in the CT in real time."
-        )
-        connNote.setStyleSheet("color: gray; font-size: 11px;")
-        connNote.setWordWrap(True)
-        connForm.addRow(connNote)
-
-        # Surgeon display - ventana secundaria con las 3 vistas duplicadas
         self._secondaryWindow = None   # referencia a la ventana, None = no abierta
-        self.surgeonDisplayBtn = qt.QPushButton("🖥  Open surgeon display")
-        self.surgeonDisplayBtn.clicked.connect(self._onToggleSurgeonDisplay)
-        connForm.addRow(self.surgeonDisplayBtn)
 
-        surgeonNote = qt.QLabel(
-            "Opens a secondary window mirroring the three slice views. "
-            "If a second monitor is detected it launches fullscreen there."
-        )
-        surgeonNote.setStyleSheet("color: gray; font-size: 11px;")
-        surgeonNote.setWordWrap(True)
-        connForm.addRow(surgeonNote)
+        self._setupUIState()
+        self._connectSignals()
 
-        # Posición del instrumento en el CT (la escribe el tracking en _onToolMoved)
-        self.penCtLabel = qt.QLabel("—")
-        self.penCtLabel.setStyleSheet(
-            "font-family: monospace; font-size: 13px; font-weight: bold;"
-        )
-        connForm.addRow("Instrument in CT (RAS):", self.penCtLabel)
+    def _setupUIState(self):
+        """Lo que no se puede definir en el .ui: escena MRML y contenido del combo."""
+        # Los qMRMLNodeComboBox necesitan la escena en tiempo de ejecucion
+        for selector in (self.ui.volumeSelector, self.ui.biomodelSelector,
+                         self.ui.markerModelSelector, self.ui.instrumentSelector,
+                         self.ui.ballsSelector):
+            selector.setMRMLScene(slicer.mrmlScene)
 
-        self.errorLabel = qt.QLabel("")
-        self.errorLabel.setStyleSheet("color: #e74c3c; font-size: 11px;")
-        self.errorLabel.setWordWrap(True)
-        connForm.addRow(self.errorLabel)
+        # Modo de operacion: el texto se ve, el dato (currentData) es lo que se pasa al .exe
+        self.ui.modeCombo.addItem("Normal",         "normal")
+        self.ui.modeCombo.addItem("Ball Profiling", "profiling")
+        self.ui.modeCombo.addItem("Calibration",    "calibration")
 
-        #Extras, por ahora si queremos quitar algun modelo o algo
-        opacityBox = ctk.ctkCollapsibleButton()
-        opacityBox.text = "TOGGLES"
-        opacityBox.collapsed = True
-        layout.addWidget(opacityBox)
-        opacityForm = qt.QFormLayout(opacityBox)
-        visLabel = qt.QLabel("Visibility trackers.")
-        visLabel.setStyleSheet("color: gray; font-size: 11px; margin-left: 2px;")
-        opacityForm.addRow(visLabel, qt.QLabel(""))
+    def _connectSignals(self):
+        self.ui.loadCTBtn.clicked.connect(self._onLoadCT)
+        self.ui.loadBiomodelBtn.clicked.connect(self._onLoadBiomodel)
+        self.ui.loadMarkerBtn.clicked.connect(self._onLoadMarker)
+        self.ui.loadInstrumentBtn.clicked.connect(self._onLoadInstrument)
+        self.ui.createStarBallsBtn.clicked.connect(self._onCreateStarBalls)
+        self.ui.readBtn.clicked.connect(self._readBalls)
 
-        self.modelOpacitySlider = ctk.ctkSliderWidget()
-        self.modelOpacitySlider.minimum = 0
-        self.modelOpacitySlider.maximum = 1
-        self.modelOpacitySlider.value = 1
-        self.modelOpacitySlider.singleStep = 0.05
-        opacityForm.addRow("Biomodel:", self.modelOpacitySlider)
-        self.modelOpacitySlider.valueChanged.connect(self._onBiomodelOpacity)
+        self.ui.connectBtn.toggled.connect(self._onConnectToggle)
+        self.ui.trackBtn.toggled.connect(self._onTrackToggle)
+        self.ui.surgeonDisplayBtn.clicked.connect(self._onToggleSurgeonDisplay)
 
-        self.markerOpacitySlider = ctk.ctkSliderWidget()
-        self.markerOpacitySlider.minimum = 0
-        self.markerOpacitySlider.maximum = 1
-        self.markerOpacitySlider.value = 1
-        self.markerOpacitySlider.singleStep = 0.05
-        opacityForm.addRow("Reference Marker:", self.markerOpacitySlider)
-        self.markerOpacitySlider.valueChanged.connect(self._onMarkerOpacity)
-
-        self.ctOpacitySlider = ctk.ctkSliderWidget()
-        self.ctOpacitySlider.minimum = 0
-        self.ctOpacitySlider.maximum = 1
-        self.ctOpacitySlider.value = 1
-        self.ctOpacitySlider.singleStep = 0.05
-        opacityForm.addRow("CT:", self.ctOpacitySlider)
-        self.ctOpacitySlider.valueChanged.connect(self._onCTOpacity)
-
-        layout.addStretch()
+        self.ui.modelOpacitySlider.valueChanged.connect(self._onBiomodelOpacity)
+        self.ui.markerOpacitySlider.valueChanged.connect(self._onMarkerOpacity)
+        self.ui.ctOpacitySlider.valueChanged.connect(self._onCTOpacity)
 
     # ── Helpers ───────────────────────────────────────────────────────────
 
     def _readBalls(self):
         """Lee el centroide actual de las bolas y lo muestra."""
-        balls = self.ballsSelector.currentNode()
+        balls = self.ui.ballsSelector.currentNode()
         if balls is None:
-            self.centroidLabel.setText("(no markup selected)")
+            self.ui.centroidLabel.setText("(no markup selected)")
             return
         if balls.GetNumberOfControlPoints() < 3:
-            self.centroidLabel.setText("⚠ You need 3 control points")
+            self.ui.centroidLabel.setText("⚠ You need 3 control points")
             return
         try:
             centroid = self.logic.getCentroidInCT(balls)
-            self.centroidLabel.setText(
+            self.ui.centroidLabel.setText(
                 f"R={centroid[0]:+.1f}  A={centroid[1]:+.1f}  S={centroid[2]:+.1f} mm"
             )
         except Exception as e:
-            self.centroidLabel.setText(f"Error: {e}")
+            self.ui.centroidLabel.setText(f"Error: {e}")
 
     def _onLoadCT(self):
         path = qt.QFileDialog.getOpenFileName(
@@ -298,7 +137,7 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         )
         if path:
             node = slicer.util.loadVolume(path)
-            self.volumeSelector.setCurrentNode(node)   # auto-selección
+            self.ui.volumeSelector.setCurrentNode(node)   # auto-selección
 
     def _onLoadBiomodel(self):
         path = qt.QFileDialog.getOpenFileName(
@@ -306,7 +145,7 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         )
         if path:
             node = slicer.util.loadSegmentation(path)
-            self.biomodelSelector.setCurrentNode(node)   # auto-selección
+            self.ui.biomodelSelector.setCurrentNode(node)   # auto-selección
 
     def _onLoadMarker(self):
         path = qt.QFileDialog.getOpenFileName(
@@ -314,7 +153,7 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         )
         if path:
             node = slicer.util.loadModel(path)
-            self.markerModelSelector.setCurrentNode(node)   # auto-selección
+            self.ui.markerModelSelector.setCurrentNode(node)   # auto-selección
 
     def _onLoadInstrument(self):
         # STL del instrumento en coordenadas locales (punta = origen, igual que en C#).
@@ -326,7 +165,7 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         if not path:
             return
         node = slicer.util.loadModel(path)
-        self.instrumentSelector.setCurrentNode(node)   # auto-selección
+        self.ui.instrumentSelector.setCurrentNode(node)   # auto-selección
 
         disp = node.GetDisplayNode()
         if disp is not None:
@@ -352,19 +191,19 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         slicer.util.showStatusMessage("StarBalls create with 3 points.", 3000)
 
     def _onBiomodelOpacity(self, value):
-        node = self.biomodelSelector.currentNode()
+        node = self.ui.biomodelSelector.currentNode()
         if node is None:
             return
         node.GetDisplayNode().SetOpacity(value)
 
     def _onMarkerOpacity(self, value):
-        node = self.markerModelSelector.currentNode()
+        node = self.ui.markerModelSelector.currentNode()
         if node is None:
             return
         node.GetDisplayNode().SetOpacity(value)
 
     def _onCTOpacity(self, value):
-        vol = self.volumeSelector.currentNode()
+        vol = self.ui.volumeSelector.currentNode()
         if vol is None:
             return
         slicer.util.setSliceViewerLayers(background=vol, backgroundOpacity=value)
@@ -379,12 +218,12 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
             # Ya existe una ventana abierta → cerrar
             self._secondaryWindow.close()
             self._secondaryWindow = None
-            self.surgeonDisplayBtn.setText("🖥  Open surgeon display")
+            self.ui.surgeonDisplayBtn.setText("🖥  Open surgeon display")
             return
 
         # Crear ventana nueva
         self._secondaryWindow = self._buildSurgeonWindow()
-        self.surgeonDisplayBtn.setText("✖  Close surgeon display")
+        self.ui.surgeonDisplayBtn.setText("✖  Close surgeon display")
 
     def _buildSurgeonWindow(self):
         """
@@ -440,7 +279,7 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
                 slicer.mrmlScene.RemoveNode(old)
             
             # 1. Lanzar el .exe con el modo elegido
-            arg = self.modeCombo.currentData
+            arg = self.ui.modeCombo.currentData
             self._proc = qt.QProcess()
             self._proc.started.connect(lambda: self._setConnStatus("proceso arrancado", "green"))
             self._proc.errorOccurred.connect(
@@ -468,7 +307,7 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
             self._connector.Start()
             self._setConnStatus("esperando al tracker...", "orange")
 
-            self.connectBtn.setText("🔌  Disconnect")
+            self.ui.connectBtn.setText("🔌  Disconnect")
         else:
             # Parar connector y proceso
             if getattr(self, "_connector", None):
@@ -478,11 +317,11 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
             if getattr(self, "_proc", None):
                 self._proc.kill()
                 self._proc = None
-            self.connectBtn.setText("🔌  Connect")
+            self.ui.connectBtn.setText("🔌  Connect")
 
     def _subscribeToTool(self, toolNode):
         # Suscribir el observer al node del instrumento
-        self.trackBtn.setText("■  Stop tracking")
+        self.ui.trackBtn.setText("■  Stop tracking")
         self._toolObserverTag = toolNode.AddObserver(
             slicer.vtkMRMLTransformNode.TransformModifiedEvent,
             self._onToolMoved
@@ -502,10 +341,10 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
     def _onTrackToggle(self, checked):
         if checked:
             # Verificar StarBalls
-            balls = self.ballsSelector.currentNode()
+            balls = self.ui.ballsSelector.currentNode()
             if balls is None or balls.GetNumberOfControlPoints() < 3:
                 slicer.util.warningDisplay("Select StarBalls (3 points) before tracking.")
-                self.trackBtn.setChecked(False)
+                self.ui.trackBtn.setChecked(False)
                 return
 
             # Verificar que el node del instrumento ya llega
@@ -516,9 +355,9 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
                 # Aún no ha llegado; nos enganchamos cuando se vea
                 self._sceneObserver = slicer.mrmlScene.AddObserver(
                     slicer.mrmlScene.NodeAddedEvent, self._onNodeAdded)
-                self.trackBtn.setText("■  Stop tracking")
+                self.ui.trackBtn.setText("■  Stop tracking")
         else:
-            self.trackBtn.setText("▶  Start tracking")
+            self.ui.trackBtn.setText("▶  Start tracking")
             # Quitar el observer
             toolNode = slicer.mrmlScene.GetFirstNodeByName("ToolToTracker")
             if toolNode is not None and hasattr(self, "_toolObserverTag"):
@@ -529,12 +368,12 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
                 del self._sceneObserver
 
     def _setConnStatus(self, text, color):
-        self.connStatusLabel.setText(f"● {text}")
-        self.connStatusLabel.setStyleSheet(f"color: {color}; font-size: 11px;")
+        self.ui.connStatusLabel.setText(f"● {text}")
+        self.ui.connStatusLabel.setStyleSheet(f"color: {color}; font-size: 11px;")
 
 
     def _onToolMoved(self, caller, event):
-        balls = self.ballsSelector.currentNode()
+        balls = self.ui.ballsSelector.currentNode()
         if balls is None:
             return
 
@@ -547,7 +386,7 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         try:
             T_pen2ct = self.logic.computePenInCT(balls, T_star2tracker, T_pen2tracker)
             pos = T_pen2ct[:3, 3]
-            self.penCtLabel.setText(
+            self.ui.penCtLabel.setText(
                 f"R={pos[0]:+.1f}  A={pos[1]:+.1f}  S={pos[2]:+.1f}"
             )
             # Mover el STL del instrumento en 3D (pose completa, con rotación)
@@ -556,7 +395,7 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
             self.logic.updateTipMarkup(pos)
             self.logic.jumpToRAS(pos)
         except Exception as e:
-            self.errorLabel.setText(f"⚠ Error: {e}")
+            self.ui.errorLabel.setText(f"⚠ Error: {e}")
 # ─────────────────────────────────────────────────────────────────────────────
 # Logic
 # ─────────────────────────────────────────────────────────────────────────────

@@ -1,4 +1,5 @@
-﻿using MathNet.Numerics;
+﻿using Emgu.CV.ML;
+using MathNet.Numerics;
 using System;
 using System.Numerics;
 
@@ -18,11 +19,19 @@ namespace KinectTracker
         private Quaternion lastRotation = Quaternion.Identity;
         private float rotationAlpha; // factor de suavizado (0-1)
 
+        // Suavizado de la velocidad. La velocidad cruda (error/dt) hereda el ruido de dos
+        // poses consecutivas y hace bailar el coasting, asi que se filtra igual que la rotación.
+        private const double VEL_ALPHA = 0.3;
+
+        private DateTime lastMeasurementTime;
+
         private bool initialized = false;
         private DateTime lastTime;
 
         public Vector3 FilteredPosition { get; private set; }
         public Quaternion FilteredRotation { get; private set; }
+        public Vector3 FilteredVelocity { get; private set; }   // mm/s, la usa el coasting
+        public bool IsInitialized => initialized;
         public KalmanPoseFilter(double processNoise = 100.0, double measurementNoise = 25.0, float rotationAlpha = 0.3f)
         {
             this.processNoise = processNoise;
@@ -54,12 +63,15 @@ namespace KinectTracker
             }
 
             FilteredPosition = new Vector3((float)state[0], (float)state[1], (float)state[2]);
+            FilteredVelocity = new Vector3((float)state[3], (float)state[4], (float)state[5]);
         }
 
-        public void Update(Vector3 measuredPosition, Quaternion measuredRotation, DateTime now) { //corrige predict con medicion nueva, da posiciones suavizadas
+        public void Update(Vector3 measuredPosition, Quaternion measuredRotation, DateTime now)
+        { //corrige predict con medicion nueva, da posiciones suavizadas
 
             double dt = (now - lastTime).TotalSeconds;
-            if (dt < 0.01) dt = 0.033;   // en vez de solo <= 0 // fallback a 30fps
+            double dtMeas = (now - lastMeasurementTime).TotalSeconds;
+            if (dtMeas < 0.001 || dtMeas > 0.5) dtMeas = 0.033;   // en vez de solo <= 0 // fallback a 30fps
 
             if (!initialized)
             {
@@ -78,7 +90,7 @@ namespace KinectTracker
 
             for (int i = 0; i < 3; i++)
             {
-                double K = P[i]/(P[i]+measurementNoise);
+                double K = P[i] / (P[i] + measurementNoise);
 
                 // Error en posición
                 double measured = (i == 0) ? measuredPosition.X : (i == 1) ? measuredPosition.Y : measuredPosition.Z;
@@ -87,17 +99,20 @@ namespace KinectTracker
                 // Corregir posición
                 state[i] += K * error;
 
-                // Corregir velocidad: error/dt es la velocidad "medida"
-                state[i + 3] = error / dt;
-                
-                if (state[i + 3] > Constants.MAX_VEL) state[i + 3] = Constants.MAX_VEL;
-                if (state[i + 3] < -Constants.MAX_VEL) state[i + 3] = -Constants.MAX_VEL;
+                //double vMeasured = error / dt; //Quitamos la dependencia al tiempo porque llamamos cada frame a predict
+                double vMeasured = error / dtMeas;
+
+                if (vMeasured > Constants.MAX_VEL) vMeasured = Constants.MAX_VEL;
+                if (vMeasured < -Constants.MAX_VEL) vMeasured = -Constants.MAX_VEL;
+
+                state[i + 3] = VEL_ALPHA * vMeasured + (1 - VEL_ALPHA) * state[i + 3];
 
                 // Reducir incertidumbre
                 P[i] = (1 - K) * P[i];
             }
 
             FilteredPosition = new Vector3((float)state[0], (float)state[1], (float)state[2]);
+            FilteredVelocity = new Vector3((float)state[3], (float)state[4], (float)state[5]);
 
             // Rotación: filtro paso bajo con Slerp
             lastRotation = Quaternion.Slerp(lastRotation, measuredRotation, rotationAlpha);

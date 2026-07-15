@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.Numerics;
 
-namespace KinectTracker {
+namespace KinectTracker
+{
 
     public readonly struct MatchResult
     {
@@ -23,13 +24,28 @@ namespace KinectTracker {
     }
 
     public class GeometryMatcher
-		{
+    {
         public static int RejectLeve = 0, RejectMedio = 0, RejectGrave = 0;
 
+        // Explora TODOS los grupos de detecciones y se queda con el de menor residual.
+        // Antes cortaba en el primer grupo que cuadraba: con ruido en escena, un fantasma que
+        // "casi" cuadra podia ganar a las esferas reales solo por explorarse antes.
         private static bool Combine(int[] grupo, int grupoLleno, int desde,
     Vector3[] detections, int[] modelSubset, SphereDistance[] distLocal, float tolerance, out MatchResult result)
         {
             result = new MatchResult(false, new int[0], float.NaN, 0, new int[0]);
+            float bestResidual = float.MaxValue;
+
+            CombineRec(grupo, grupoLleno, desde, detections, modelSubset, distLocal, tolerance,
+                       ref result, ref bestResidual);
+
+            return result.Success;
+        }
+
+        private static void CombineRec(int[] grupo, int grupoLleno, int desde,
+            Vector3[] detections, int[] modelSubset, SphereDistance[] distLocal, float tolerance,
+            ref MatchResult best, ref float bestResidual)
+        {
             int k = modelSubset.Length;   // tamaño del subconjunto (4 = completo, 3 = trío)
 
             if (grupoLleno == k)
@@ -46,28 +62,30 @@ namespace KinectTracker {
 
                 if (Permute(perm, 0, subDetections, distLocal, tolerance, out MatchResult subResult))
                 {
-                    // subResult.Correspondences tiene índices 0..N-1 del sub-array.
-                    // Traducir a índices originales de detections[] usando grupo[].
-                    int[] traducido = new int[k];
-                    for (int m = 0; m < k; m++)
-                        traducido[m] = grupo[subResult.Correspondences[m]];
+                    if (subResult.Residual < bestResidual)
+                    {
+                        bestResidual = subResult.Residual;
 
-                    // modelSubset = qué esferas del modelo casaron (necesario para el tooltip en match parcial)
-                    result = new MatchResult(true, traducido, subResult.Residual, k, (int[])modelSubset.Clone());
-                    return true;
+                        // subResult.Correspondences tiene índices 0..N-1 del sub-array.
+                        // Traducir a índices originales de detections[] usando grupo[].
+                        int[] traducido = new int[k];
+                        for (int m = 0; m < k; m++)
+                            traducido[m] = grupo[subResult.Correspondences[m]];
+
+                        // modelSubset = qué esferas del modelo casaron (necesario para el tooltip en match parcial)
+                        best = new MatchResult(true, traducido, subResult.Residual, k, (int[])modelSubset.Clone());
+                    }
                 }
 
-                return false;
+                return;   // ya no se corta: se siguen probando el resto de grupos
             }
 
             for (int i = desde; i < detections.Length; i++)
             {
                 grupo[grupoLleno] = i;
-                if (Combine(grupo, grupoLleno + 1, i + 1, detections, modelSubset, distLocal, tolerance, out result))
-                    return true;
+                CombineRec(grupo, grupoLleno + 1, i + 1, detections, modelSubset, distLocal, tolerance,
+                           ref best, ref bestResidual);
             }
-
-            return false;
         }
 
         public static MatchResult Match(Vector3[] detections, RigidBodyModel model, float tolerance, int minSpheres)
@@ -109,33 +127,45 @@ namespace KinectTracker {
 
         private static void Swap(int[] arr, int i, int j) // intercambia arr[i] con arr[j]
         {
-            (arr[i], arr[j]) = (arr[j], arr[i]); 
+            (arr[i], arr[j]) = (arr[j], arr[i]);
         }
 
+        // Explora TODAS las permutaciones y se queda con la de menor residual.
+        // Antes cortaba en la primera que cuadraba dentro de tolerancia, asi que un
+        // emparejamiento mediocre podia ganar solo por aparecer antes en el orden de exploracion.
         private static bool Permute(int[] perm, int start, Vector3[] detections, SphereDistance[] distLocal, float tolerance, out MatchResult result) // permuta el array de índices 0..k-1 y prueba cada orden
         {
             result = new MatchResult(false, new int[0], float.NaN, 0, new int[0]);
+            float bestResidual = float.MaxValue;
 
+            PermuteRec(perm, start, detections, distLocal, tolerance, ref result, ref bestResidual);
+
+            return result.Success;
+        }
+
+        private static void PermuteRec(int[] perm, int start, Vector3[] detections, SphereDistance[] distLocal,
+            float tolerance, ref MatchResult best, ref float bestResidual)
+        {
             if (start == perm.Length)
             {
                 if (CheckPermutation(perm, detections, distLocal, tolerance, out float residual))
                 {
-                    // perm[i] = índice de la detección asignada a la esfera i del modelo (convención B)
-                    result = new MatchResult(true, (int[])perm.Clone(), residual, perm.Length, new int[0]);
-                    return true;
+                    if (residual < bestResidual)
+                    {
+                        bestResidual = residual;
+                        // perm[i] = índice de la detección asignada a la esfera i del modelo (convención B)
+                        best = new MatchResult(true, (int[])perm.Clone(), residual, perm.Length, new int[0]);
+                    }
                 }
-                return false;
+                return;   // ya no se corta: se siguen probando el resto de permutaciones
             }
 
             for (int i = start; i < perm.Length; i++)
             {
                 Swap(perm, start, i);
-                if (Permute(perm, start + 1, detections, distLocal, tolerance, out result))
-                    return true;
+                PermuteRec(perm, start + 1, detections, distLocal, tolerance, ref best, ref bestResidual);
                 Swap(perm, start, i); // backtrack
             }
-
-            return false;
         }
 
         private static List<int[]> Subconjuntos(int n, int k)
