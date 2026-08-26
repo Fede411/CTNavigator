@@ -165,66 +165,80 @@
              </property>
             </widget>
            </item>
-           <item row="8" column="0" colspan="2">
-            <widget class="QPushButton" name="createStarBallsBtn">
-             <property name="text">
-              <string>Create StarBalls...</string>
-             </property>
-            </widget>
-           </item>
-           <item row="9" column="0">
-            <widget class="QLabel" name="ballsLabel">
-             <property name="text">
-              <string>IR Spheres (StarBalls):</string>
-             </property>
-            </widget>
-           </item>
-           <item row="9" column="1">
-            <widget class="qMRMLNodeComboBox" name="ballsSelector">
-             <property name="nodeTypes">
-              <stringlist>
-               <string>vtkMRMLMarkupsFiducialNode</string>
-              </stringlist>
-             </property>
-             <property name="noneEnabled">
-              <bool>true</bool>
-             </property>
-             <property name="addEnabled">
-              <bool>false</bool>
-             </property>
-             <property name="removeEnabled">
-              <bool>false</bool>
-             </property>
-             <property name="selectNodeUponCreation">
-              <bool>false</bool>
-             </property>
-            </widget>
-           </item>
-           <item row="10" column="0">
-            <widget class="QLabel" name="centroidTitleLabel">
-             <property name="text">
-              <string>Centroid of spheres in IR:</string>
-             </property>
-            </widget>
-           </item>
-           <item row="10" column="1">
-            <widget class="QLabel" name="centroidLabel">
-             <property name="styleSheet">
-              <string notr="true">font-family: monospace; font-size: 11px; color: gray;</string>
-             </property>
-             <property name="text">
-              <string>—</string>
-             </property>
-            </widget>
-           </item>
-           <item row="11" column="0" colspan="2">
-            <widget class="QPushButton" name="readBtn">
-             <property name="text">
-              <string>↺  Read sphere position</string>
-             </property>
-            </widget>
-           </item>
           </layout>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="ctkCollapsibleButton" name="connBox">
+        <property name="text">
+         <string>CONNECTION</string>
+        </property>
+        <property name="collapsed">
+         <bool>true</bool>
+        </property>
+        <layout class="QFormLayout" name="connForm">
+         <item row="0" column="0">
+          <widget class="QLabel" name="modeLabel">
+           <property name="text">
+            <string>Mode:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QComboBox" name="modeCombo"/>
+         </item>
+         <item row="1" column="0" colspan="2">
+          <widget class="QPushButton" name="connectBtn">
+           <property name="styleSheet">
+            <string notr="true">QPushButton { background: #27ae60; color: white; font-size: 13px; padding: 8px; border-radius: 4px; }
+QPushButton:checked { background: #e74c3c; }</string>
+           </property>
+           <property name="text">
+            <string>🔌  Connect</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0" colspan="2">
+          <widget class="QLabel" name="connStatusLabel">
+           <property name="styleSheet">
+            <string notr="true">color: gray; font-size: 11px;</string>
+           </property>
+           <property name="text">
+            <string>● disconnected</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0" colspan="2">
+          <widget class="QPushButton" name="trackBtn">
+           <property name="styleSheet">
+            <string notr="true">QPushButton { background: #27ae60; color: white; font-size: 13px; padding: 8px; border-radius: 4px; }
+QPushButton:checked { background: #e74c3c; }</string>
+           </property>
+           <property name="text">
+            <string>▶  Start tracking</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="0" colspan="2">
+          <widget class="QLabel" name="connNote">
+           <property name="styleSheet">
+            <string notr="true">color: gray; font-size: 11px;</string>
+           </property>
+           <property name="text">
+            <string>Reads MarkerToTracker and ToolToTracker from the OpenIGTLink connector and updates the instrument position in the CT in real time.</string>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+          </widget>
          </item>
         </layout>
        </widget>
@@ -233,119 +247,63 @@
     </widget>
    </item>
    <item>
-    <widget class="ctkCollapsibleButton" name="connBox">
+    <widget class="ctkCollapsibleButton" name="registrationBox">
      <property name="text">
-      <string>CONNECTION</string>
+      <string>REGISTRATION</string>
      </property>
      <property name="collapsed">
       <bool>true</bool>
      </property>
-     <layout class="QFormLayout" name="connForm">
-      <item row="0" column="0">
-       <widget class="QLabel" name="modeLabel">
-        <property name="text">
-         <string>Mode:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QComboBox" name="modeCombo"/>
-      </item>
-      <item row="1" column="0" colspan="2">
-       <widget class="QPushButton" name="connectBtn">
-        <property name="styleSheet">
-         <string notr="true">QPushButton { background: #27ae60; color: white; font-size: 13px; padding: 8px; border-radius: 4px; }
-QPushButton:checked { background: #e74c3c; }</string>
-        </property>
-        <property name="text">
-         <string>🔌  Connect</string>
-        </property>
-        <property name="checkable">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0" colspan="2">
-       <widget class="QLabel" name="connStatusLabel">
+     <layout class="QVBoxLayout" name="registrationLayout">
+      <item>
+       <widget class="QLabel" name="regHelpLabel">
         <property name="styleSheet">
          <string notr="true">color: gray; font-size: 11px;</string>
         </property>
         <property name="text">
-         <string>● desconectado</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0" colspan="2">
-       <widget class="QPushButton" name="trackBtn">
-        <property name="styleSheet">
-         <string notr="true">QPushButton { background: #27ae60; color: white; font-size: 13px; padding: 8px; border-radius: 4px; }
-QPushButton:checked { background: #e74c3c; }</string>
-        </property>
-        <property name="text">
-         <string>▶  Start tracking</string>
-        </property>
-        <property name="checkable">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="0" colspan="2">
-       <widget class="QLabel" name="connNote">
-        <property name="styleSheet">
-         <string notr="true">color: gray; font-size: 11px;</string>
-        </property>
-        <property name="text">
-         <string>Reads MarkerToTracker and ToolToTracker from the OpenIGTLink connector and updates the instrument position in the CT in real time.</string>
+         <string>Point-based registration. Add CT points on the model and, for each, touch the same physical point with the tip and capture. Points pair by row order.</string>
         </property>
         <property name="wordWrap">
          <bool>true</bool>
         </property>
        </widget>
       </item>
-      <item row="5" column="0" colspan="2">
-       <widget class="QPushButton" name="surgeonDisplayBtn">
+      <item>
+       <widget class="QWidget" name="registrationTablesHost" native="true">
+        <layout class="QHBoxLayout" name="registrationTablesLayout"/>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="captureTipBtn">
         <property name="text">
-         <string>🖥  Open surgeon display</string>
+         <string>Capture tip point</string>
         </property>
        </widget>
       </item>
-      <item row="6" column="0" colspan="2">
-       <widget class="QLabel" name="surgeonNote">
+      <item>
+        <widget class="QPushButton" name="captureTargetBtn">
+            <property name="text">
+            <string>Capture TRE target</string>
+            </property>
+        </widget>
+        </item>
+      <item>
+       <widget class="QPushButton" name="computeRegistrationBtn">
         <property name="styleSheet">
-         <string notr="true">color: gray; font-size: 11px;</string>
+         <string notr="true">QPushButton { background: #2980b9; color: white; font-size: 13px; padding: 8px; border-radius: 4px; }</string>
         </property>
         <property name="text">
-         <string>Opens a secondary window mirroring the three slice views. If a second monitor is detected it launches fullscreen there.</string>
-        </property>
-        <property name="wordWrap">
-         <bool>true</bool>
+         <string>Compute registration</string>
         </property>
        </widget>
       </item>
-      <item row="7" column="0">
-       <widget class="QLabel" name="penCtTitleLabel">
-        <property name="text">
-         <string>Instrument in CT (RAS):</string>
-        </property>
-       </widget>
-      </item>
-      <item row="7" column="1">
-       <widget class="QLabel" name="penCtLabel">
+      <item>
+       <widget class="QLabel" name="regResultLabel">
         <property name="styleSheet">
-         <string notr="true">font-family: monospace; font-size: 13px; font-weight: bold;</string>
+         <string notr="true">font-size: 12px; font-weight: bold;</string>
         </property>
         <property name="text">
          <string>—</string>
-        </property>
-       </widget>
-      </item>
-      <item row="8" column="0" colspan="2">
-       <widget class="QLabel" name="errorLabel">
-        <property name="styleSheet">
-         <string notr="true">color: #e74c3c; font-size: 11px;</string>
-        </property>
-        <property name="text">
-         <string/>
         </property>
         <property name="wordWrap">
          <bool>true</bool>
@@ -358,12 +316,12 @@ QPushButton:checked { background: #e74c3c; }</string>
    <item>
     <widget class="ctkCollapsibleButton" name="opacityBox">
      <property name="text">
-      <string>TOGGLES</string>
+      <string>DISPLAYS</string>
      </property>
      <property name="collapsed">
       <bool>true</bool>
      </property>
-     <layout class="QFormLayout" name="opacityForm">
+     <layout class="QGridLayout" name="opacityForm">
       <item row="0" column="0" colspan="2">
        <widget class="QLabel" name="visLabel">
         <property name="styleSheet">
@@ -397,6 +355,16 @@ QPushButton:checked { background: #e74c3c; }</string>
         </property>
        </widget>
       </item>
+      <item row="1" column="2">
+       <widget class="QCheckBox" name="showBiomodelCheck">
+        <property name="text">
+         <string/>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
       <item row="2" column="0">
        <widget class="QLabel" name="markerOpacityLabel">
         <property name="text">
@@ -420,15 +388,25 @@ QPushButton:checked { background: #e74c3c; }</string>
         </property>
        </widget>
       </item>
-      <item row="3" column="0">
-       <widget class="QLabel" name="ctOpacityLabel">
+      <item row="2" column="2">
+       <widget class="QCheckBox" name="showMarkerCheck">
         <property name="text">
-         <string>CT:</string>
+         <string/>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="instrumentOpacityLabel">
+        <property name="text">
+         <string>Instrument:</string>
         </property>
        </widget>
       </item>
       <item row="3" column="1">
-       <widget class="ctkSliderWidget" name="ctOpacitySlider">
+       <widget class="ctkSliderWidget" name="instrumentOpacitySlider">
         <property name="singleStep">
          <double>0.050000000000000</double>
         </property>
@@ -440,6 +418,106 @@ QPushButton:checked { background: #e74c3c; }</string>
         </property>
         <property name="value">
          <double>1.000000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="2">
+       <widget class="QCheckBox" name="showInstrumentCheck">
+        <property name="text">
+         <string/>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="tipOpacityLabel">
+        <property name="text">
+         <string>Tip:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="ctkSliderWidget" name="tipOpacitySlider">
+        <property name="singleStep">
+         <double>0.050000000000000</double>
+        </property>
+        <property name="minimum">
+         <double>0.000000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>1.000000000000000</double>
+        </property>
+        <property name="value">
+         <double>1.000000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="2">
+       <widget class="QCheckBox" name="showTipCheck">
+        <property name="text">
+         <string/>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="0">
+       <widget class="QLabel" name="pointsOpacityLabel">
+        <property name="text">
+         <string>Registration points:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="1">
+       <widget class="ctkSliderWidget" name="pointsOpacitySlider">
+        <property name="singleStep">
+         <double>0.050000000000000</double>
+        </property>
+        <property name="minimum">
+         <double>0.000000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>1.000000000000000</double>
+        </property>
+        <property name="value">
+         <double>1.000000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="2">
+       <widget class="QCheckBox" name="showPointsCheck">
+        <property name="text">
+         <string/>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="0" colspan="3">
+       <widget class="Line" name="surgeonSeparator">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="7" column="0">
+       <widget class="QLabel" name="surgeonViewLabel">
+        <property name="text">
+         <string>Surgeon view:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="7" column="1" colspan="2">
+       <widget class="QComboBox" name="surgeonViewCombo"/>
+      </item>
+      <item row="8" column="0" colspan="3">
+       <widget class="QPushButton" name="surgeonDisplayBtn">
+        <property name="text">
+         <string>🖥  Open surgeon display</string>
         </property>
        </widget>
       </item>

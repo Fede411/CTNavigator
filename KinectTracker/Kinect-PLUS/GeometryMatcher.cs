@@ -3,7 +3,15 @@ using System.Collections.Generic;
 using System.Numerics;
 
 namespace KinectTracker
-{
+{//Clase para emparejar detecciones 3D con un modelo rígido de esferas, usando distancias internas y tolerancia.
+    //Combine: Explora todos los subconjuntos de detecciones y se queda con el de menor error residual.
+    //CombineRec: Recursivo de Combine, construye un grupo de detecciones y llama a Permute para probar todos los órdenes.
+    //Match: Llama a Combine para todos los subconjuntos de esferas del modelo, empezando por el completo y bajando hasta minSpheres.
+    //Permute: Explora todos los órdenes de asignación de detecciones a esferas del modelo y se queda con el de menor error residual.
+    //PermuteRec: Recursivo de Permute, construye un orden de asignación y llama a CheckPermutation para evaluar el error residual.
+    //Swap: Intercambia dos elementos en un array.
+    //Subconjuntos: Genera todos los subconjuntos de tamaño k de un conjunto de tamaño n.
+    //CheckPermutation: Evalúa un orden de asignación de detecciones a esferas del modelo y calcula el error residual, rechazando si alguna distancia excede la tolerancia.
 
     public readonly struct MatchResult
     {
@@ -27,9 +35,7 @@ namespace KinectTracker
     {
         public static int RejectLeve = 0, RejectMedio = 0, RejectGrave = 0;
 
-        // Explora TODOS los grupos de detecciones y se queda con el de menor residual.
-        // Antes cortaba en el primer grupo que cuadraba: con ruido en escena, un fantasma que
-        // "casi" cuadra podia ganar a las esferas reales solo por explorarse antes.
+        //Explora todos los grupos de detecciones y se queda con el de menor error residual.
         private static bool Combine(int[] grupo, int grupoLleno, int desde,
     Vector3[] detections, int[] modelSubset, SphereDistance[] distLocal, float tolerance, out MatchResult result)
         {
@@ -46,16 +52,16 @@ namespace KinectTracker
             Vector3[] detections, int[] modelSubset, SphereDistance[] distLocal, float tolerance,
             ref MatchResult best, ref float bestResidual)
         {
-            int k = modelSubset.Length;   // tamaño del subconjunto (4 = completo, 3 = trío)
+            int k = modelSubset.Length;   //tamaño del subconjunto (4 = completo, 3 = trío)
 
             if (grupoLleno == k)
             {
-                // Construir sub-array con las detecciones del grupo (tamaño variable según modelo)
+                //Construir sub-array con las detecciones del grupo (tamaño variable según modelo)
                 Vector3[] subDetections = new Vector3[k];
                 for (int m = 0; m < k; m++)
                     subDetections[m] = detections[grupo[m]];
 
-                // Permutar el orden dentro del sub-array (Permute prueba todos los órdenes)
+                //Permutar el orden dentro del sub-array (Permute prueba todos los órdenes)
                 int[] perm = new int[k];
                 for (int m = 0; m < perm.Length; m++)
                     perm[m] = m;
@@ -66,18 +72,18 @@ namespace KinectTracker
                     {
                         bestResidual = subResult.Residual;
 
-                        // subResult.Correspondences tiene índices 0..N-1 del sub-array.
-                        // Traducir a índices originales de detections[] usando grupo[].
+                        //subResult.Correspondences tiene índices 0..N-1 del sub-array.
+                        //Traducir a índices originales de detections[] usando grupo[].
                         int[] traducido = new int[k];
                         for (int m = 0; m < k; m++)
                             traducido[m] = grupo[subResult.Correspondences[m]];
 
-                        // modelSubset = qué esferas del modelo casaron (necesario para el tooltip en match parcial)
+                        //modelSubset = qué esferas del modelo casaron (necesario para el tooltip en match parcial)
                         best = new MatchResult(true, traducido, subResult.Residual, k, (int[])modelSubset.Clone());
                     }
                 }
 
-                return;   // ya no se corta: se siguen probando el resto de grupos
+                return;   //ya no se corta: se siguen probando el resto de grupos
             }
 
             for (int i = desde; i < detections.Length; i++)
@@ -95,12 +101,12 @@ namespace KinectTracker
 
             for (int k = model.SphereCount; k >= minSpheres; k--)
             {
-                if (detections.Length < k) continue;   // con k=4 y 3 detecciones, salta a k=3
+                if (detections.Length < k) continue;   //con k=4 y 3 detecciones, salta a k=3
 
-                // Enumera qué k esferas del modelo (C(SphereCount,k) subconjuntos)
+                //Enumera qué k esferas del modelo (C(SphereCount,k) subconjuntos)
                 foreach (int[] modelSubset in Subconjuntos(model.SphereCount, k))
                 {
-                    // distancias del modelo cuyos DOS extremos están en el subconjunto, reindexadas a 0..k-1
+                    //distancias del modelo cuyos DOS extremos están en el subconjunto, reindexadas a 0..k-1
                     var lista = new List<SphereDistance>();
                     foreach (var sd in model.Distances)
                     {
@@ -118,22 +124,19 @@ namespace KinectTracker
                     }
                 }
 
-                // Si algún subconjunto de este k casó, no bajamos a menos esferas
+                //Si algún subconjunto de este k casó, no bajamos a menos esferas
                 if (best.Success) return best;
             }
             return best;
         }
 
 
-        private static void Swap(int[] arr, int i, int j) // intercambia arr[i] con arr[j]
+        private static void Swap(int[] arr, int i, int j) //intercambia arr[i] con arr[j]
         {
             (arr[i], arr[j]) = (arr[j], arr[i]);
         }
 
-        // Explora TODAS las permutaciones y se queda con la de menor residual.
-        // Antes cortaba en la primera que cuadraba dentro de tolerancia, asi que un
-        // emparejamiento mediocre podia ganar solo por aparecer antes en el orden de exploracion.
-        private static bool Permute(int[] perm, int start, Vector3[] detections, SphereDistance[] distLocal, float tolerance, out MatchResult result) // permuta el array de índices 0..k-1 y prueba cada orden
+        private static bool Permute(int[] perm, int start, Vector3[] detections, SphereDistance[] distLocal, float tolerance, out MatchResult result) //permuta el array de índices 0..k-1 y prueba cada orden
         {
             result = new MatchResult(false, new int[0], float.NaN, 0, new int[0]);
             float bestResidual = float.MaxValue;
@@ -153,18 +156,18 @@ namespace KinectTracker
                     if (residual < bestResidual)
                     {
                         bestResidual = residual;
-                        // perm[i] = índice de la detección asignada a la esfera i del modelo (convención B)
+                        //perm[i] = índice de la detección asignada a la esfera i del modelo (convención B)
                         best = new MatchResult(true, (int[])perm.Clone(), residual, perm.Length, new int[0]);
                     }
                 }
-                return;   // ya no se corta: se siguen probando el resto de permutaciones
+                return;   //ya no se corta: se siguen probando el resto de permutaciones
             }
 
             for (int i = start; i < perm.Length; i++)
             {
                 Swap(perm, start, i);
                 PermuteRec(perm, start + 1, detections, distLocal, tolerance, ref best, ref bestResidual);
-                Swap(perm, start, i); // backtrack
+                Swap(perm, start, i); //backtrack
             }
         }
 
@@ -186,7 +189,7 @@ namespace KinectTracker
             float residualAccum = 0f;
 
             foreach (var sd in distLocal)
-            {   // distancias internas del subconjunto, en índices locales 0..k-1
+            {   //distancias internas del subconjunto, en indices locales 0..k-1
                 Vector3 detA = detections[perm[sd.IndexA]];
                 Vector3 detB = detections[perm[sd.IndexB]];
 
@@ -195,15 +198,13 @@ namespace KinectTracker
 
                 if (diff > tolerance)
                 {
-                    {
-                        //Console.WriteLine($"  reject: modelo={sd.DistanceMm:F1} medido={dist:F1} diff={diff:F1}");
-                        if (diff < 30) RejectLeve++;
-                        else if (diff < 100) RejectMedio++;
-                        else RejectGrave++;
+                    //Console.WriteLine($"  reject: modelo={sd.DistanceMm:F1} medido={dist:F1} diff={diff:F1}");
+                    if (diff < 30) RejectLeve++;
+                    else if (diff < 100) RejectMedio++;
+                    else RejectGrave++;
 
-                        residual = 0f;
-                        return false;
-                    }
+                    residual = 0f;
+                    return false;
                 }
                 residualAccum += diff * diff;
 

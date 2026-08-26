@@ -9,8 +9,11 @@ using MathNet.Numerics.LinearAlgebra;
 
 namespace KinectTracker
 {
-    // Servidor OpenIGTLink. La app actúa de fuente de tracking (como un PlusServer):
-    // Slicer o PLUS se conectan como cliente y reciben las poses como mensajes TRANSFORM.
+    //Servidor OpenIGTLink. La app actúa de fuente de tracking (como un PlusServer):
+    //Slicer se conecta como cliente y reciben las poses como mensajes TRANSFORM.
+
+    //Start() -> SendTransform(deviceName, R, t) -> Stop()
+
     public class OpenIGTLinkServer
     {
         private TcpListener listener;
@@ -19,7 +22,7 @@ namespace KinectTracker
         private Thread acceptThread;
         private bool running = false;
 
-        // Tabla CRC-64 precalculada (ECMA-182)
+        //Tabla CRC-64 precalculada (ECMA-182)
         private static readonly ulong[] crcTable = BuildCrcTable();
 
         public OpenIGTLinkServer(int port = 18944)
@@ -47,7 +50,7 @@ namespace KinectTracker
             try { listener.Stop(); } catch { }
         }
 
-        // Acepta conexiones entrantes en segundo plano
+        //Acepta conexiones entrantes en segundo plano
         private void AcceptLoop()
         {
             while (running)
@@ -62,14 +65,14 @@ namespace KinectTracker
             }
         }
 
-        // Envía una pose (R 3x3, t en mm) como mensaje TRANSFORM a todos los clientes
+        //Envía una pose (R 3x3, t en mm) como mensaje TRANSFORM a todos los clientes
         public void SendTransform(string deviceName, Matrix<double> R, Vector3 t)
         {
             byte[] packet = BuildTransformMessage(deviceName, R, t);
 
             lock (clientsLock)
             {
-                // Recorremos al revés para poder quitar clientes muertos
+                //Recorremos al revés para poder quitar clientes muertos
                 for (int i = clients.Count - 1; i >= 0; i--)
                 {
                     try
@@ -86,11 +89,11 @@ namespace KinectTracker
             }
         }
 
-        // ── Construcción del mensaje ─────────────────────────────────────────
+        //CONSTRUCCIÓN DEL MENSAJE
 
         private static byte[] BuildTransformMessage(string deviceName, Matrix<double> R, Vector3 t)
         {
-            // Cuerpo: 12 floats big-endian, column-major (rotación) + traslación
+            //Cuerpo: 12 floats big-endian, column-major (rotación) + traslación
             float[] m = new float[12];
             m[0] = (float)R[0, 0]; m[1] = (float)R[1, 0]; m[2] = (float)R[2, 0];
             m[3] = (float)R[0, 1]; m[4] = (float)R[1, 1]; m[5] = (float)R[2, 1];
@@ -101,47 +104,47 @@ namespace KinectTracker
             for (int i = 0; i < 12; i++)
             {
                 byte[] f = BitConverter.GetBytes(m[i]);
-                if (BitConverter.IsLittleEndian) Array.Reverse(f); // a big-endian
+                if (BitConverter.IsLittleEndian) Array.Reverse(f); //a big-endian
                 Array.Copy(f, 0, body, i * 4, 4);
             }
 
-            // CRC-64 del cuerpo
+            //CRC-64 del cuerpo
             ulong crc = Crc64(body, body.Length, 0UL);
 
-            // Header (58 bytes)
+            //Header (58 bytes)
             byte[] header = new byte[58];
             int offset = 0;
 
-            // Version (uint16) = 1
+            //Version (uint16) = 1
             WriteBE(header, ref offset, (ushort)1);
 
-            // Tipo "TRANSFORM" (12 bytes, padding 0)
+            //Tipo "TRANSFORM" (12 bytes, padding 0)
             WriteString(header, ref offset, "TRANSFORM", 12);
 
-            // Nombre del dispositivo (20 bytes, padding 0)
+            //Nombre del dispositivo (20 bytes, padding 0)
             WriteString(header, ref offset, deviceName, 20);
 
-            // Timestamp (uint64): segundos.fracción en formato fixed-point IGTL
+            //Timestamp (uint64): segundos.fracción en formato fixed-point IGTL
             double secs = (DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
             uint sec = (uint)Math.Floor(secs);
-            uint frac = (uint)((secs - sec) * 4294967296.0); // * 2^32
+            uint frac = (uint)((secs - sec) * 4294967296.0); //* 2^32
             ulong ts = ((ulong)sec << 32) | frac;
             WriteBE(header, ref offset, ts);
 
-            // Body size (uint64) = 48
+            //Body size (uint64) = 48
             WriteBE(header, ref offset, (ulong)body.Length);
 
-            // CRC (uint64)
+            //CRC (uint64)
             WriteBE(header, ref offset, crc);
 
-            // Concatenar header + body
+            //oncatenar header + body
             byte[] packet = new byte[header.Length + body.Length];
             Array.Copy(header, 0, packet, 0, header.Length);
             Array.Copy(body, 0, packet, header.Length, body.Length);
             return packet;
         }
 
-        // ── Helpers de escritura big-endian ──────────────────────────────────
+        //Helpers de escritura big-endian
 
         private static void WriteBE(byte[] buf, ref int offset, ushort value)
         {
@@ -163,7 +166,7 @@ namespace KinectTracker
             offset += length;
         }
 
-        // ── CRC-64 ECMA-182 (poly 0x42F0E1EBA9EA3693, sin reflexión) ─────────
+        //CRC-64 ECMA-182 (poly 0x42F0E1EBA9EA3693, sin reflexión)
 
         private static ulong[] BuildCrcTable()
         {

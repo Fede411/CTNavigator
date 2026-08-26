@@ -2,7 +2,8 @@
 using System.Numerics;
 
 namespace KinectTracker
-{
+{//Clase para acumular estadísticas de detección y tracking, y volcar un resumen en consola.
+    //RegisterFrame() -> RegisterDetection(n) -> RegisterPose(error, tip) -> RegisterMatchResidual(residual) -> StatsSummary(ttp)
 
     public struct RejectionCounts
     {
@@ -64,7 +65,7 @@ namespace KinectTracker
             Rejections.ByZSize += incoming.ByZSize;
         }
 
-        // Llamar en AcceptPose: error de pose + posición de la punta este frame
+        //Llamar en AcceptPose: error de pose + posición de la punta este frame
         public void RegisterPose(float error, Vector3 tip)
         {
             Pose.ErrorSum += error;
@@ -92,8 +93,8 @@ namespace KinectTracker
                 Console.WriteLine($"  {i} detecciones: {DetectionHistogram[i]} ({pct:F1}%)");
             }
 
-            // Un match completo puede salir de cualquier frame con AL MENOS 4 detecciones
-            // (no solo de los que tienen exactamente 4), de ahi que antes salieran >100%
+            //Un match completo puede salir de cualquier frame con AL MENOS 4 detecciones
+            //(no solo de los que tienen exactamente 4), de ahi que antes salieran >100%
             int framesN4 = 0;
             for (int i = 4; i < DetectionHistogram.Length; i++)
                 framesN4 += DetectionHistogram[i];
@@ -106,7 +107,7 @@ namespace KinectTracker
             double posesPct = FramesProcessed > 0 ? 100.0 * totalPoses / FramesProcessed : 0;
             Console.WriteLine($"Total poses: {totalPoses} ({posesPct:F1}% global)");
 
-            // Coasting: frames sin pose que se han extrapolado, y los que ya se dan por perdidos
+            //Coasting: frames sin pose que se han extrapolado, y los que ya se dan por perdidos
             double coastPct = FramesProcessed > 0 ? 100.0 * ttp.FramesCoastedTotal / FramesProcessed : 0;
             double lostPct = FramesProcessed > 0 ? 100.0 * ttp.FramesLostTotal / FramesProcessed : 0;
             Console.WriteLine($"Frames coasteados: {ttp.FramesCoastedTotal} ({coastPct:F1}% global)");
@@ -134,8 +135,10 @@ namespace KinectTracker
                                   $"grave(>=100) {GeometryMatcher.RejectGrave} " +
                                   $"({100.0 * GeometryMatcher.RejectGrave / totalRej:F1}%)");
             }
+            Console.WriteLine($"Detecciones excluidas por memoria del marcador: {ttp.MarkerMemoryExcluded}");
+            Console.WriteLine($"Re-adquisiciones en frio (bootstrap 3 bolas): {ttp.ColdBootstraps}");
 
-            // Calidad de pose
+            //Calidad de pose
             if (Pose.ErrorCount > 0)
             {
                 Console.WriteLine($"\nError de pose medio: {Pose.ErrorSum / Pose.ErrorCount:F2}mm (máx {Pose.ErrorMax:F2})");

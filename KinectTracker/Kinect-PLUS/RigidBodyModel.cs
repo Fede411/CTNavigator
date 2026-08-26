@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.Numerics;
 
-namespace KinectTracker {
+namespace KinectTracker
+{//Clase que representa un modelo de cuerpo rígido, definido por un conjunto de esferas locales y sus distancias entre sí.
     public class RigidBodyModel
     {
         public readonly string Name;

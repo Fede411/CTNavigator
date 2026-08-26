@@ -4,8 +4,10 @@ using MathNet.Numerics;
 using MathNet.Numerics.LinearAlgebra;
 
 namespace KinectTracker
-{
-	public class PoseEstimator
+{//Clase para estimar la pose de un modelo 3D a partir de un conjunto de puntos detectados en 3D y sus correspondencias.
+    //Implementa el método de Horn/Kabsch para calcular la rotación y traslación que minimiza el error cuadrático entre los puntos del modelo y los puntos detectados.
+
+    public class PoseEstimator
 	{
 		public static (Matrix<double> R, Vector3 t, float error) ComputePose(Vector3[] modelPoints, Vector3[] detectedPoints, //recibe modelo, detecciones y correspondencias.
                                                                                                                               //calcula la transformación que lleva el modelo a las detecciones por el método de Horn/Kabsch
@@ -17,8 +19,7 @@ namespace KinectTracker
 			float error = 0.0f;
             int n = modelPoints.Length; 
 
-            //Para poder sacar los centroides y matchear, primero ordenamos los puntos detectados
-            //según el orden de los puntos del modelo
+            //Para poder sacar los centroides y matchear, primero ordenamos los puntos detectados según el orden de los puntos del modelo
 
             Vector3[] matched = new Vector3[n];
             for (int i = 0; i < n; i++)

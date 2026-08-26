@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using System.Drawing;
 
 namespace KinectTracker
-{
+{//Clase para detectar blobs en la imagen IR del Kinect. Devuelve los centroides de los blobs detectados y cuenta los rechazos por área, circularidad y aspect ratio.
     public class BlobDetector
     {
         public List<Blob2DInfo> DetectBlobs(byte[] irPixels, out RejectionCounts rejections) //procesa la imagen IR y devuelve los centroides de los blobs detectados
@@ -16,13 +16,13 @@ namespace KinectTracker
             List<Blob2DInfo> centroids = new List<Blob2DInfo>();
             rejections = new RejectionCounts();
 
-            Mat irMat = new Mat(Constants.IMG_HEIGHT, Constants.IMG_WIDTH, DepthType.Cv8U, 1); //Matrix, equivalente al bitmap pero en OpenCV
+            Mat irMat = new Mat(Constants.IMG_HEIGHT, Constants.IMG_WIDTH, DepthType.Cv8U, 1); //Matrix, equivalente al bitmap pero en EmguCV (wrapper de OpenCV en C#)
             byte[] grayPixels = new byte[Constants.IMG_WIDTH * Constants.IMG_HEIGHT];
 
             //Extraemos solo el canal R (que es igual a B y G en escala de grises)
             for (int i = 0; i < Constants.IMG_WIDTH * Constants.IMG_HEIGHT; i++)
             {
-                grayPixels[i] = irPixels[i * 4 + 2]; //R channel
+                grayPixels[i] = irPixels[i * 4 + 2];
             }
 
             System.Runtime.InteropServices.Marshal.Copy(grayPixels, 0, irMat.DataPointer, grayPixels.Length); //Copiamos al mat
@@ -51,13 +51,12 @@ namespace KinectTracker
                     if (area < Constants.MIN_BLOB_AREA || area > Constants.MAX_BLOB_AREA)
                     { rejections.ByArea++; continue; }
 
-                    //Filtro circularidad (esferas deberían ser redondas, ~1.0)
-                    //Fórmula: 4π × área / perímetro²
+                    //Filtro circularidad
                     double perimeter = CvInvoke.ArcLength(contour, true);
                     double circularity = perimeter > 0 ? 4 * Math.PI * area / (perimeter * perimeter) : 0;
                     if (circularity < Constants.MIN_CIRCULARITY) {  rejections.ByCircularity++; continue; }
 
-                    //Filtro aspect ratio (esferas son aprox cuadradas en bounding box)
+                    //Filtro aspect ratio
                     Rectangle bbox = CvInvoke.BoundingRectangle(contour);
                     double aspect = (double)bbox.Width / Math.Max(1, bbox.Height);
                     if (aspect < Constants.MIN_ASPECT || aspect > Constants.MAX_ASPECT) { rejections.ByAspect++; continue; }

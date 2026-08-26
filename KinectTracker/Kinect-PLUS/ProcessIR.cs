@@ -5,14 +5,14 @@ using System.Numerics;
 using Microsoft.Kinect;
 
 namespace KinectTracker
-{
+{//Clase para procesar la imagen IR y detectar blobs. La Z se obtiene por triangulación estéreo.
     public static class IRProcessor
     {
         public static List<PointF> Process(
     byte[] colorPixels, byte[] irPixels,
     BlobDetector blobDetector, out RejectionCounts rejections)
         {
-            // Threshold IR
+            //Threshold IR
             for (int i = 0; i < Constants.IMG_WIDTH * Constants.IMG_HEIGHT; i++)
             {
                 int irValue = colorPixels[i * 2] | (colorPixels[i * 2 + 1] << 8);
@@ -33,7 +33,7 @@ namespace KinectTracker
                 irPixels[i * 4 + 3] = 255;
             }
 
-            // Detección de blobs (solo centroides 2D; la Z la dará la triangulación estéreo)
+            //Detección de blobs (solo centroides 2D; la Z la dará la triangulación estéreo)
             List<Blob2DInfo> blobs = blobDetector.DetectBlobs(irPixels, out rejections);
 
             List<PointF> currentCentroids = new List<PointF>();

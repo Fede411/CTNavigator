@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Numerics;
 using MathNet.Numerics.LinearAlgebra;
-using System.Media;
 
 namespace KinectTracker
 {
@@ -20,12 +19,20 @@ namespace KinectTracker
         public int FramesCoastedTotal = 0;   // diagnostico
         public int FramesLostTotal = 0;      // diagnostico
         public int ClusterRejected = 0;      // detecciones aisladas descartadas antes del matcher
-        public int PredictionRejected = 0;   // detecciones lejos de la prediccion
-                                             
+        public int PredictionRejected = 0;   // detecciones lejos de la prediccion, descartadas
+
+        // Memoria espacial del marcador (estatico): posiciones de sus 3 bolas en el ultimo
+        // match completo, para excluirlas por cercania cuando el marcador no matchea.
+        private Vector3[] lastMarkerSpheres = null;
+        private const float MARKER_MEMORY_RADIUS = 20.0f;   // mm; las bolas del marcador no se mueven
+        public int MarkerMemoryExcluded = 0;
+        public int ColdBootstraps = 0;   // re-adquisiciones en frio con trio
+
+        // Sonido de adquisicion/perdida del instrumento (feedback para el cirujano).
+        // Se dispara solo en TRANSICIONES, con histeresis para no pitar en cada parpadeo.
         private bool toolAudioState = false;      // estado sonoro actual: true = "siguiendo"
         private int framesSinceStateChange = 0;
         private const int AUDIO_HYSTERESIS = 5;   // frames que hay que aguantar antes de cambiar de estado
-
 
         private KalmanPoseFilter kalmanFilter;
 
@@ -44,6 +51,9 @@ namespace KinectTracker
         public float LastPoseError { get; private set; } = 0f;
         public int[] MissingSphereCount { get; private set; } = new int[4];
         public float LastMatchResidual { get; private set; } = 0f;
+        // Posiciones 3D de las esferas que formaron la pose aceptada (para pintarlas en naranja).
+        public List<Vector3> LastUsedSpheres { get; private set; } = new List<Vector3>();
+        public int[] LastUsedDetections { get; private set; } = new int[0];
 
         public ToolTipProcessor(KalmanPoseFilter kalmanFilter)
         {
@@ -59,6 +69,7 @@ namespace KinectTracker
             MarkerFound = false;
             MarkerFound = false;
             ToolFound = false;
+            LastUsedSpheres.Clear();   // se rellena solo si se acepta una pose este frame
             Vector3[] instrumentDetections = detectionsArr;
 
             MatchResult markerMatch = GeometryMatcher.Match(detectionsArr, markerModel, 10.0f, markerModel.SphereCount);
@@ -85,25 +96,64 @@ namespace KinectTracker
                     MarkerR = markerPose.R;
                     MarkerT = markerPose.t;
                     MarkerPosition = markerPos;
-                    //DrawMarker(markerPos, markerMatch.Correspondences, currentCentroids, irPixels);
+                    DrawMarker(markerPos, markerMatch.Correspondences, currentCentroids, irPixels);
 
                     Console.WriteLine($"  MARKER! error={markerPose.error:F2}mm  pos=({markerPos.X:F1}, {markerPos.Y:F1}, {markerPos.Z:F1}) mm");
+
+                    // Memorizar las posiciones 3D de las 3 bolas del marcador. El marcador es
+                    // ESTATICO: aunque en frames posteriores no matchee (deteccion ~1%), sus
+                    // bolas siguen ahi y contaminan al matcher del instrumento. Con la memoria,
+                    // se excluyen por cercania sin necesidad de re-matchearlo cada frame.
+                    lastMarkerSpheres = new Vector3[markerMatch.Correspondences.Length];
+                    for (int i = 0; i < markerMatch.Correspondences.Length; i++)
+                        lastMarkerSpheres[i] = detectionsArr[markerMatch.Correspondences[i]];
 
                     // Quitar las 3 detecciones del marcador para el match del instrumento
                     instrumentDetections = ExcludeIndices(detectionsArr, markerMatch.Correspondences);
                 }
             }
 
-            //Filtro clustering (distancia maxima del modelo = 107.28mm)
+            // 1b. Exclusion por memoria espacial del marcador: si el marcador no matcheo este
+            //     frame pero se conoce su ultima posicion, excluir toda deteccion cercana a
+            //     alguna de sus bolas memorizadas. Al ser estatico, la memoria no caduca; si
+            //     el marcador se mueve, re-matcheara en su nueva posicion y se actualizara.
+            if (!MarkerFound && lastMarkerSpheres != null)
+            {
+                List<Vector3> kept = new List<Vector3>();
+                foreach (var det in instrumentDetections)
+                {
+                    bool nearMarker = false;
+                    foreach (var ms in lastMarkerSpheres)
+                    {
+                        if (Vector3.Distance(det, ms) < MARKER_MEMORY_RADIUS)
+                        {
+                            nearMarker = true;
+                            break;
+                        }
+                    }
+                    if (nearMarker) MarkerMemoryExcluded++;
+                    else kept.Add(det);
+                }
+                instrumentDetections = kept.ToArray();
+            }
+
+            //2. Filtro de agrupacion espacial: las 4 esferas del instrumento forman un grupo
+            //   compacto (distancia maxima del modelo = 107.28mm). Una deteccion aislada, sin
+            //   vecinos cerca, no puede ser parte del instrumento: es ruido de fondo.
+            //   Se descarta ANTES del matcher para que no explore combinaciones imposibles.
             instrumentDetections = ClusterFilter(instrumentDetections);
 
-            //Filtro por prediccion: si venimos de una pose reciente, sabemos donde deberían caer las 4 esferas.
+            //3. Filtro por prediccion: si venimos de una pose reciente, sabemos donde deberian
+            //   caer las 4 esferas. Nos quedamos solo con las detecciones cercanas a esa prediccion.
+            //   Esto es coherencia temporal: en vez de re-buscar el instrumento desde cero cada
+            //   frame, seguimos el que ya teniamos localizado.
             instrumentDetections = PredictionFilter(instrumentDetections);
 
-            //Buscar el instrumento (4 esferas) entre las detecciones restantes
-            MatchResult matchResult = GeometryMatcher.Match(instrumentDetections, instrumentModel, 15.0f, instrumentModel.SphereCount);
+            //4. Buscar el instrumento (4 esferas) entre las detecciones restantes
+            MatchResult matchResult = GeometryMatcher.Match(instrumentDetections, instrumentModel, 8.0f, instrumentModel.SphereCount);
 
-            // DIAG: si hay 4+ detecciones pero el matcher no cierra, volcar las distancias entre las detecciones crudas para ver que geometria esta rechazando.
+            // DIAG: si hay 4+ detecciones pero el matcher NO cierra, volcar las distancias
+            // entre las detecciones crudas para ver que geometria esta rechazando.
             // Las teoricas del modelo: 38.29 / 58.38 / 82.63 / 92.73 / 99.78 / 107.28
             if (!matchResult.Success && instrumentDetections.Length >= 4)
             {
@@ -149,6 +199,9 @@ namespace KinectTracker
                         MatchesSuccessful++;
                         Console.WriteLine($"  MATCH COMPLETO (4/4)! pose_error={pose.error:F2}mm  residual={matchResult.Residual:F2}mm");
                         LastMatchResidual = matchResult.Residual;
+                        LastUsedSpheres = new List<Vector3>();
+                        foreach (int idx in matchResult.Correspondences)
+                            LastUsedSpheres.Add(instrumentDetections[idx]);
                         consecutivePartials = 0;
                         AcceptPose(pose, toolTip, currentCentroids, irPixels, instrumentModel);
                     }
@@ -159,9 +212,24 @@ namespace KinectTracker
             {
                 TryPartialMatch(instrumentDetections, currentCentroids, irPixels, instrumentModel);
             }
+            else if (instrumentDetections.Length >= 3 &&
+                     (lastProjectedSpheres == null ||
+                      (DateTime.Now - lastMatchTime).TotalSeconds >= 5))
+            {
+                // Re-adquisicion en FRIO: sin pose reciente, el partial no puede asociar (no tiene
+                // lastProjectedSpheres). Aqui se intenta arrancar identificando un trio del modelo
+                // por su geometria. Es estricto a proposito: los 4 trios comparten alguna distancia
+                // suelta, asi que un trio ambiguo (mas de una hipotesis) NO arranca, para no
+                // enganchar una asignacion equivocada. Solo puebla el estado; el tracking normal
+                // refina desde el frame siguiente.
+                TryColdBootstrap(instrumentDetections, currentCentroids, irPixels, instrumentModel);
+            }
 
             // Coasting: si este frame no dio pose (ni completa ni parcial), extrapolar
             // desde la ultima pose REAL usando la velocidad FILTRADA del Kalman (mm/s)
+            // y el tiempo real transcurrido, no un contador de frames.
+            // OJO: aqui NO se toca lastToolTip, lastProjectedSpheres ni lastMatchTime.
+            // Ese era el bug de la version anterior: coastear sobre lo coasteado y realimentarse.
             if (!ToolFound && lastProjectedSpheres != null &&
                 (DateTime.Now - lastMatchTime).TotalSeconds < 5)
             {
@@ -182,31 +250,30 @@ namespace KinectTracker
                     FramesLostTotal++;
                     DrawGhostTip(lastToolTip, irPixels);
                 }
-                // Sonido de adquisicion/perdida. Estado efectivo = hay pose real O se esta coasteando
-                // (el instrumento sigue "vivo" en pantalla). Perdido de verdad = ni pose ni coasting.
-                bool trackingNow = ToolFound || (framesCoasted > 0 && framesCoasted <= MAX_COAST);
-                UpdateToolAudio(trackingNow);
             }
+
+            // Sonido de adquisicion/perdida. Estado efectivo = hay pose real O se esta coasteando
+            // (el instrumento sigue "vivo" en pantalla). Perdido de verdad = ni pose ni coasting.
+            bool trackingNow = ToolFound || (framesCoasted > 0 && framesCoasted <= MAX_COAST);
+            UpdateToolAudio(trackingNow);
         }
 
-        // Emite un pitido solo cuando el estado se mantiene AUDIO_HYSTERESIS frames,
-        // para no disparar sonidos en cada parpadeo del tracking.
+        // Emite un pitido solo cuando el estado se mantiene AUDIO_HYSTERESIS frames, para no
+        // disparar sonidos en cada parpadeo del tracking.
         private void UpdateToolAudio(bool trackingNow)
         {
             if (trackingNow == toolAudioState)
             {
-                framesSinceStateChange = 0;   // sigue igual, nada que hacer
+                framesSinceStateChange = 0;
                 return;
             }
 
             framesSinceStateChange++;
             if (framesSinceStateChange < AUDIO_HYSTERESIS)
-                return;   // el cambio aun no se ha sostenido lo suficiente
+                return;
 
-            // El cambio se ha mantenido: confirmamos transicion y sonamos
             toolAudioState = trackingNow;
             framesSinceStateChange = 0;
-            //Console.WriteLine($"[AUDIO] transicion -> {(trackingNow ? "ENCONTRADO" : "PERDIDO")}");
 
             try
             {
@@ -231,7 +298,10 @@ namespace KinectTracker
             return result.ToArray();
         }
 
-        // Descarta detecciones aisladas. MIN_NEIGHBORS = 2 y no 3, para que un grupo de 3 esferas (partial) sobreviva.
+        // Descarta detecciones aisladas. Cada esfera del instrumento tiene a las otras 3 a menos
+        // de 107.28mm (distancia maxima del modelo), asi que una bola real siempre tiene vecinos.
+        // Un fantasma de fondo (pared, mesa, reflejo) aparece solo: se cae del filtro.
+        // MIN_NEIGHBORS = 2 y no 3, para que un grupo de 3 esferas (partial) sobreviva.
         private Vector3[] ClusterFilter(Vector3[] detections)
         {
             const float CLUSTER_RADIUS = 130.0f;   // algo mas que los 107.28mm del modelo, margen de ruido
@@ -261,8 +331,13 @@ namespace KinectTracker
             return kept.ToArray();
         }
 
-        // Coherencia temporal: si hay una pose reciente, las 4 esferas deberian caer cerca de donde estaban. Nos quedamos solo con las detecciones proximas a esa prediccion.
-        
+        // Coherencia temporal: si hay una pose reciente, las 4 esferas deberian caer cerca de
+        // donde estaban. Nos quedamos solo con las detecciones proximas a esa prediccion.
+        //
+        // El fallback es la parte critica: si no hay pose reciente, o si el filtro deja muy pocas
+        // detecciones (instrumento movido rapido, prediccion mala), se devuelve la nube ENTERA.
+        // Sin esto, una prediccion desviada mataria las bolas buenas y el sistema no podria
+        // re-adquirir el instrumento tras perderlo.
         private Vector3[] PredictionFilter(Vector3[] detections)
         {
             const float PREDICTION_RADIUS = 60.0f;   // el salto de punta llega a ~50mm en movimientos rapidos
@@ -270,7 +345,7 @@ namespace KinectTracker
 
             // Sin pose reciente no hay prediccion en la que confiar: re-adquisicion desde cero
             if (lastProjectedSpheres == null ||
-                (DateTime.Now - lastMatchTime).TotalSeconds >= 0.3)
+                (DateTime.Now - lastMatchTime).TotalSeconds >= 1.0)
                 return detections;
 
             List<Vector3> kept = new List<Vector3>();
@@ -377,6 +452,9 @@ namespace KinectTracker
                     {
                         MissingSphereCount[i]++;
 
+                        // DIAG: buscar la deteccion mas cercana a la esfera predicha, INCLUIDAS
+                        // las ya asignadas. Solo es fusion si esta PEGADA y ademas ya la cogio otra
+                        // esfera; si esta lejos, es que la esfera no se ve o la prediccion falla.
                         float nearest = float.MaxValue;
                         bool nearestTaken = false;
                         for (int j = 0; j < detections.Length; j++)
@@ -417,12 +495,90 @@ namespace KinectTracker
                     {
                         consecutivePartials++;
                         PartialMatchesSuccessful++;
+                        LastUsedSpheres = new List<Vector3>(detectedPts);
                         AcceptPose(pose, toolTip, currentCentroids, irPixels, instrumentModel);
 
                         Console.WriteLine($"  PARTIAL MATCH ({associationCount}/4)! pose_error={pose.error:F2}mm");
                     }
                 }
             }
+        }
+
+        // Re-adquisicion en frio: identifica un trio del modelo por geometria, sin pose previa.
+        // Estricto por diseno: exige un unico trio valido con residual bajo. Si hay ambiguedad
+        // (mas de un trio casa) no arranca, para no enganchar una asignacion equivocada.
+        private void TryColdBootstrap(Vector3[] detections, List<PointF> currentCentroids,
+            byte[] irPixels, RigidBodyModel instrumentModel)
+        {
+            const float COLD_TOLERANCE = 8.0f;    // estricto: mas que el match normal
+            const float COLD_MAX_RESIDUAL = 2.5f; // solo trios que cuadran muy bien
+            const float COLD_MAX_POSE_ERR = 6.0f;
+
+            // Probar cada uno de los 4 trios del modelo por separado y quedarnos con los que casan.
+            // Al ser trios discriminables (separacion >=20mm en la terna completa), un trio real
+            // limpio casa con uno solo; el ruido rara vez produce un trio valido y unico.
+            int[][] trios = new int[][]
+            {
+                new int[] {0,1,2}, new int[] {0,1,3}, new int[] {0,2,3}, new int[] {1,2,3}
+            };
+
+            int hits = 0;
+            bool haveHit = false;
+            MatchResult bestHit = default(MatchResult);
+            int[] bestModelSpheres = null;
+
+            foreach (var trio in trios)
+            {
+                // Submodelo con solo las 3 esferas de este trio
+                Vector3[] sub = new Vector3[3];
+                for (int i = 0; i < 3; i++) sub[i] = instrumentModel.LocalSpheres[trio[i]];
+                var subModel = new RigidBodyModel("trio", sub, null);
+
+                var r = GeometryMatcher.Match(detections, subModel, COLD_TOLERANCE, 3);
+                if (r.Success && r.Residual <= COLD_MAX_RESIDUAL)
+                {
+                    hits++;
+                    if (!haveHit || r.Residual < bestHit.Residual)
+                    {
+                        haveHit = true;
+                        bestHit = r;
+                        bestModelSpheres = trio;
+                    }
+                }
+            }
+
+            // Unicidad: si mas de un trio casa, es ambiguo -> no arrancar este frame
+            // Con criterios estrictos (8mm / residual 2.5), que dos trios casen a la vez es raro;
+            // cuando pasa, el de menor residual (bestHit) es casi siempre el correcto. Se usa ese
+            // en vez de descartar el frame por ambiguedad, que frenaba demasiado la re-adquisicion.
+            if (!haveHit) return;
+
+            // Construir pose con el trio ganador
+            List<Vector3> modelPts = new List<Vector3>();
+            List<Vector3> detectedPts = new List<Vector3>();
+            for (int i = 0; i < 3; i++)
+            {
+                modelPts.Add(instrumentModel.LocalSpheres[bestModelSpheres[i]]);
+                detectedPts.Add(detections[bestHit.Correspondences[i]]);
+            }
+            int[] directCorr = { 0, 1, 2 };
+
+            var pose = PoseEstimator.ComputePose(modelPts.ToArray(), detectedPts.ToArray(), directCorr);
+            if (pose.error >= COLD_MAX_POSE_ERR) return;
+
+            var toolTipLocal = MathNet.Numerics.LinearAlgebra.Vector<double>.Build.Dense(
+                new double[] { 0, 0, 0 });
+            var toolTipKinect = pose.R * toolTipLocal;
+            Vector3 toolTip = new Vector3(
+                (float)toolTipKinect[0] + pose.t.X,
+                (float)toolTipKinect[1] + pose.t.Y,
+                (float)toolTipKinect[2] + pose.t.Z);
+
+            // Arranque en frio aceptado: puebla el estado para que el tracking normal siga solo.
+            ColdBootstraps++;
+            LastUsedSpheres = new List<Vector3>(detectedPts);
+            AcceptPose(pose, toolTip, currentCentroids, irPixels, instrumentModel);
+            Console.WriteLine($"  COLD BOOTSTRAP (3/4)! pose_error={pose.error:F2}mm  residual={bestHit.Residual:F2}mm");
         }
 
         private void UpdateProjections((Matrix<double> R, Vector3 t, float error) pose,
@@ -447,8 +603,8 @@ namespace KinectTracker
         {
             var (tx, ty) = StereoDepthMapper.Project2D(toolTip);
 
-            foreach (var c in currentCentroids)
-                ImageUtils.DrawLine(irPixels, (int)c.X, (int)c.Y, tx, ty, 255, 255, 0);
+            //foreach (var c in currentCentroids)
+                //ImageUtils.DrawLine(irPixels, (int)c.X, (int)c.Y, tx, ty, 255, 255, 0);
 
             ImageUtils.DrawCircle(irPixels, tx, ty, 5, 255, 0, 0);
         }
@@ -466,24 +622,25 @@ namespace KinectTracker
         }
 
         private void DrawMarker(Vector3 markerPos, int[] correspondences,
-            List<PointF> currentCentroids, byte[] irPixels, DepthMapper depthMapper)
+            List<PointF> currentCentroids, byte[] irPixels)
         {
-            // Proyectamos el centro 3D del marcador a píxeles de la imagen IR,
-            // igual que hacemos con la punta del instrumento
-            var m2D = depthMapper.ConvertTo2D(markerPos.X, markerPos.Y, markerPos.Z);
+            // Proyeccion estereo (misma que la punta), no la del DepthMapper mono ya retirado.
+            var (mx, my) = StereoDepthMapper.Project2D(markerPos);
 
-            // Una línea azul desde cada esfera del marcador hasta su centro.
-            // correspondences[i_modelo] = i_detección, así que cada índice
-            // apunta a un centroide real de currentCentroids
+            // correspondences[i_modelo] = i_deteccion; los indices del match del marcador
+            // apuntan a detectionsArr, que esta alineado con currentCentroids (el marcador
+            // se matchea sobre TODAS las detecciones, sin exclusion previa).
             foreach (int idx in correspondences)
             {
                 if (idx < 0 || idx >= currentCentroids.Count) continue;
                 var c = currentCentroids[idx];
-                //ImageUtils.DrawLine(irPixels, (int)c.X, (int)c.Y, m2D.X, m2D.Y, 0, 0, 255);
+                // Bolas del marcador en CIAN (distinto del naranja del instrumento)
+                ImageUtils.DrawCircle(irPixels, (int)c.X, (int)c.Y, 8, 0, 255, 255);
+                ImageUtils.DrawLine(irPixels, (int)c.X, (int)c.Y, mx, my, 0, 255, 255);
             }
 
-            // Círculo cian en el centro, para diferenciarlo del tooltip (rojo)
-            //ImageUtils.DrawCircle(irPixels, m2D.X, m2D.Y, 5, 0, 255, 255);
+            // Centro del marcador en cian
+            ImageUtils.DrawCircle(irPixels, mx, my, 5, 0, 255, 255);
         }
     }
 }

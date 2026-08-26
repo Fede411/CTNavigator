@@ -2,9 +2,14 @@
 
 namespace KinectTracker {
     public static class ImageUtils
-    {
-        // Convierte el IR crudo (2 bytes/px) a escala de grises BGRA, SIN threshold.
-        // Para calibración: MATLAB necesita ver el tablero, no blobs binarizados.
+    {//Clase de utilidades para manipular imágenes en memoria (byte[]), dibujar, convertir formatos, guardar PNG, etc.
+        //IRaGris: Convierte el IR crudo (2 bytes/px) a escala de grises BGRA, SIN threshold, Modo Calbiración.
+        //GuardarPNG: Para el Modo de Calibración, guardar la imagen IR cruda en PNG para procesarla en MATLAB.
+        //DrawCircle: Para dibujar sobre blobs
+        //DrawLine: Para dibujar el instrumento y marcador
+
+        //Convierte el IR crudo (2 bytes/px) a escala de grises BGRA, SIN threshold.
+        //Para calibración: MATLAB necesita ver el tablero, no blobs binarizados.
         public static byte[] IRaGris(byte[] colorPixels)
         {
             byte[] gris = new byte[Constants.IMG_WIDTH * Constants.IMG_HEIGHT * 4];
@@ -57,7 +62,7 @@ namespace KinectTracker {
 
         public static void DrawLine(byte[] pixels, int x0, int y0, int x1, int y1, byte r, byte g, byte b)
         {
-            // Algoritmo de Bresenham
+            //Algoritmo de Bresenham
             int dx = Math.Abs(x1 - x0);
             int dy = Math.Abs(y1 - y0);
             int sx = x0 < x1 ? 1 : -1;

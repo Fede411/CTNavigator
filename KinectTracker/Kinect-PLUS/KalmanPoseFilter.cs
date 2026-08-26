@@ -4,7 +4,11 @@ using System;
 using System.Numerics;
 
 namespace KinectTracker
-{
+{//Clase para filtrar la pose (posición y orientación) de un objeto detectado en 3D usando un filtro de Kalman.
+ //La posición se filtra con un Kalman de 6 estados (x, y, z, vx, vy, vz) y la rotación se filtra con un filtro paso bajo (Slerp).
+
+    //Predict: avanza la posición según la velocidad y aumenta la incertidumbre, sin usar mediciones.
+    //Update: corrige la predicción con una medición nueva, da posiciones suavizadas.
 
     public class KalmanPoseFilter
     {
@@ -12,16 +16,16 @@ namespace KinectTracker
         private double[] P = new double[6]; //Varianza de cada estado
 
         //Parámetros de ruido
-        private double processNoise;    // Q, ruido del proceso (modelo de movimiento), afecta la rapidez de respuesta a cambios
-        private double measurementNoise; // R, ruido de la medición (detecciones), afecta la confianza en las detecciones vs. el modelo
+        private double processNoise;    //Q, ruido del proceso (modelo de movimiento), afecta la rapidez de respuesta a cambios
+        private double measurementNoise; //R, ruido de la medición (detecciones), afecta la confianza en las detecciones vs. el modelo
 
-        // Rotación (filtro paso bajo)
+        //Rotación (filtro paso bajo)
         private Quaternion lastRotation = Quaternion.Identity;
-        private float rotationAlpha; // factor de suavizado (0-1)
+        private float rotationAlpha; //factor de suavizado (0-1)
 
-        // Suavizado de la velocidad. La velocidad cruda (error/dt) hereda el ruido de dos
-        // poses consecutivas y hace bailar el coasting, asi que se filtra igual que la rotación.
-        private const double VEL_ALPHA = 0.3;
+        //Suavizado de la velocidad. La velocidad cruda (error/dt) hereda el ruido de dos
+        //poses consecutivas y hace bailar el coasting, asi que se filtra igual que la rotación.
+        private const double VEL_ALPHA = 0.3; //mover a constants
 
         private DateTime lastMeasurementTime;
 
@@ -30,16 +34,16 @@ namespace KinectTracker
 
         public Vector3 FilteredPosition { get; private set; }
         public Quaternion FilteredRotation { get; private set; }
-        public Vector3 FilteredVelocity { get; private set; }   // mm/s, la usa el coasting
+        public Vector3 FilteredVelocity { get; private set; }   //mm/s, la usa el coasting
         public bool IsInitialized => initialized;
-        public KalmanPoseFilter(double processNoise = 100.0, double measurementNoise = 25.0, float rotationAlpha = 0.3f)
+        public KalmanPoseFilter(double processNoise = 100.0, double measurementNoise = 75.0, float rotationAlpha = 0.3f)
         {
             this.processNoise = processNoise;
             this.measurementNoise = measurementNoise;
             this.rotationAlpha = rotationAlpha;
 
             for (int i = 0; i < 6; i++)
-                P[i] = 1000.0; // incertidumbre inicial alta
+                P[i] = 1000.0; //incertidumbre inicial alta
         }
 
         public void Predict(DateTime now) //avanza posicion mediante velocidad y aumenta incertidumbre, sin usar mediciones
@@ -49,14 +53,14 @@ namespace KinectTracker
             double dt = (now - lastTime).TotalSeconds;
             lastTime = now;
 
-            // Avanzar posición según velocidad
-            // x_nuevo = x + vx * dt (igual para y, z)
+            //Avanzar posición según velocidad
+            //x_nuevo = x + vx * dt (igual para y, z)
             for (int i = 0; i < 3; i++)
             {
                 state[i] += state[i + 3] * dt;
             }
 
-            // Aumentar incertidumbre
+            //Aumentar incertidumbre
             for (int i = 0; i < 6; i++)
             {
                 P[i] += processNoise;
@@ -71,15 +75,15 @@ namespace KinectTracker
 
             double dt = (now - lastTime).TotalSeconds;
             double dtMeas = (now - lastMeasurementTime).TotalSeconds;
-            if (dtMeas < 0.001 || dtMeas > 0.5) dtMeas = 0.033;   // en vez de solo <= 0 // fallback a 30fps
+            if (dtMeas < 0.001 || dtMeas > 0.5) dtMeas = 0.033;   //en vez de solo <= 0 //fallback a 30fps
 
             if (!initialized)
             {
-                // Primera medición: inicializar estado directamente
+                //Primera medición: inicializar estado directamente
                 state[0] = measuredPosition.X;
                 state[1] = measuredPosition.Y;
                 state[2] = measuredPosition.Z;
-                state[3] = 0; state[4] = 0; state[5] = 0; // velocidad inicial cero
+                state[3] = 0; state[4] = 0; state[5] = 0; //velocidad inicial cero
                 lastRotation = measuredRotation;
                 FilteredRotation = measuredRotation;
                 initialized = true;
@@ -92,11 +96,11 @@ namespace KinectTracker
             {
                 double K = P[i] / (P[i] + measurementNoise);
 
-                // Error en posición
+                //Error en posición
                 double measured = (i == 0) ? measuredPosition.X : (i == 1) ? measuredPosition.Y : measuredPosition.Z;
                 double error = measured - state[i];
 
-                // Corregir posición
+                //Corregir posición
                 state[i] += K * error;
 
                 //double vMeasured = error / dt; //Quitamos la dependencia al tiempo porque llamamos cada frame a predict
@@ -107,14 +111,14 @@ namespace KinectTracker
 
                 state[i + 3] = VEL_ALPHA * vMeasured + (1 - VEL_ALPHA) * state[i + 3];
 
-                // Reducir incertidumbre
+                //Reducir incertidumbre
                 P[i] = (1 - K) * P[i];
             }
 
             FilteredPosition = new Vector3((float)state[0], (float)state[1], (float)state[2]);
             FilteredVelocity = new Vector3((float)state[3], (float)state[4], (float)state[5]);
 
-            // Rotación: filtro paso bajo con Slerp
+            //Rotación: filtro paso bajo con Slerp
             lastRotation = Quaternion.Slerp(lastRotation, measuredRotation, rotationAlpha);
             FilteredRotation = lastRotation;
 
