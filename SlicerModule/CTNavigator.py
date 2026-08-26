@@ -93,6 +93,8 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         self._setupTransformChain()
         self._setupRegistrationTables()
         self._connectSignals()
+        if slicer.mrmlScene.GetFirstNodeByName("ToolToTracker") is not None:
+            self.ui.trackBtn.setChecked(True)   # dispara _onTrackToggle -> re-suscribe
 
     def _setupRegistrationTables(self):
         """Crea las dos tablas de puntos del registro con qSlicerSimpleMarkupsWidget
@@ -454,6 +456,8 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
 
         return median.tolist()
 
+    
+
     def _onCaptureTip(self):
         """Captura la posicion actual de la punta (origen de ToolToMarker, en coords
         del marcador) y la anade a ReferencePoints. Equivale al 'Place From' del FRW.
@@ -535,12 +539,18 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
             self.ui.regResultLabel.setStyleSheet(
                 f"font-size: 12px; font-weight: bold; color: {color};")
 
-    def cleanup(self):
-        """Se llama cuando Slicer descarga el módulo. Cerramos la ventana
-        secundaria si estuviera abierta para evitar widgets huérfanos."""
-        if getattr(self, "_secondaryWindow", None) is not None:
-            self._secondaryWindow.close()
-            self._secondaryWindow = None
+        def cleanup(self):
+            """Se llama cuando Slicer descarga el módulo (incluido un Reload).
+            Quitamos los observers para no dejarlos colgando y cerramos la ventana."""
+            toolNode = slicer.mrmlScene.GetFirstNodeByName("ToolToMarker")
+            if toolNode is not None and hasattr(self, "_toolObserverTag"):
+                toolNode.RemoveObserver(self._toolObserverTag)
+            if hasattr(self, "_sceneObserver"):
+                slicer.mrmlScene.RemoveObserver(self._sceneObserver)
+                del self._sceneObserver
+            if getattr(self, "_secondaryWindow", None) is not None:
+                self._secondaryWindow.close()
+                self._secondaryWindow = None
 
     def _onConnectToggle(self, checked):
         if checked:
