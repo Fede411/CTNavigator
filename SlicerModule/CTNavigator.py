@@ -350,7 +350,7 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
             geo = screens[1].geometry
             win.move(geo.x(), geo.y())
             win.resize(geo.width(), geo.height())
-            win.showFullScreen()
+            win.show()
         else:
             win.resize(1200, 500)
             win.show()
