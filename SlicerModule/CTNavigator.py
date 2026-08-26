@@ -249,8 +249,8 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         if path:
             node = slicer.util.loadModel(path)
             self.ui.markerModelSelector.setCurrentNode(node)   # auto-selección
-            markerToCT = self.logic.getOrCreateTransform("MarkerToCT")
-            node.SetAndObserveTransformNodeID(markerToCT.GetID())
+            #markerToCT = self.logic.getOrCreateTransform("MarkerToCT")
+            #node.SetAndObserveTransformNodeID(markerToCT.GetID())
 
     def _onLoadInstrument(self):
         # STL del instrumento en coordenadas locales (punta = origen, igual que en C#).
