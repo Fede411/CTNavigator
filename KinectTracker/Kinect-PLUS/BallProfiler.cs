@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
+using System.Diagnostics;   // Stopwatch
 
 namespace KinectTracker
 {//Métodos para caracterizar el FLE de precisión y exactitud del sistema, además de su área de trabajo. Exporta todo a .csv para análisis posterior.
@@ -23,14 +24,15 @@ namespace KinectTracker
         private List<float> zs = new List<float>();
         private float knownDistance;
 
+
         //Valores de un par de bolas (FLE de exactitud, sesgo)
         private List<float> pairDist = new List<float>();
         private float knownPairDistance = 0f; //Medida con calibre
 
         //Mapa de la zona de trabajo
-        private struct MapRow { public float tx, ty, tz, cx, cy, cz, res; public int n; public bool pose; }
+        private struct MapRow { public float tx, ty, tz, cx, cy, cz, res; public int n; public bool pose; public long t_ms; }
         private List<MapRow> mapRows = new List<MapRow>();
-
+        private Stopwatch mapClock;   // monótono; arranca en el primer frame del mapeo
         public BallProfiler(float knownDistance)
         {
             this.knownDistance = knownDistance;
@@ -60,6 +62,7 @@ namespace KinectTracker
         //Registra una fila del mapa de trabajo. hadPose distingue tracking efectivo
         public void ObserveMap(Vector3 tip, Vector3 cent, float residual, int nBalls, bool hadPose)
         {
+            if (mapClock == null) mapClock = Stopwatch.StartNew();
             mapRows.Add(new MapRow
             {
                 tx = tip.X,
@@ -70,7 +73,8 @@ namespace KinectTracker
                 cz = cent.Z,
                 res = residual,
                 n = nBalls,
-                pose = hadPose
+                pose = hadPose,
+                t_ms = mapClock.ElapsedMilliseconds
             });
         }
 
@@ -194,6 +198,29 @@ namespace KinectTracker
                         r.tx, r.ty, r.tz, r.cx, r.cy, r.cz, r.res, r.n, (r.pose ? 1 : 0)));
             }
             Console.WriteLine($"CSV del mapa volcado en: {csvPath}");
+
+            //archivo de tiempos, alineado fila a fila con el mapa (tasa temporal)
+            string timeCsv = csvPath.Replace(".csv", "_times.csv");
+            using (StreamWriter sw = new StreamWriter(timeCsv))
+            {
+                sw.WriteLine("t_ms");
+                foreach (var r in mapRows)
+                    sw.WriteLine(r.t_ms);
+            }
+            Console.WriteLine($"CSV de tiempos volcado en: {timeCsv}");
+
+            //Tasa efectiva directa en consola
+            if (mapRows.Count >= 2)
+            {
+                long span = mapRows[mapRows.Count - 1].t_ms - mapRows[0].t_ms;
+                double rate = span > 0 ? 1000.0 * (mapRows.Count - 1) / span : 0;
+
+                var dts = new List<long>();
+                for (int i = 1; i < mapRows.Count; i++) dts.Add(mapRows[i].t_ms - mapRows[i - 1].t_ms);
+                dts.Sort();
+
+                Console.WriteLine($"Duración: {span / 1000.0:F1} s | tasa media: {rate:F1} Hz | dt mediano: {dts[dts.Count / 2]} ms | dt máx: {dts[dts.Count - 1]} ms");
+            }
         }
 
         //Exporta tableros IR en gris para Stereo Camera Calibrator de MATLAB.

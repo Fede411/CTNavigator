@@ -210,6 +210,11 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
         self.ui.captureTipBtn.clicked.connect(self._onCaptureTip)
         self.ui.captureTargetBtn.clicked.connect(self._onCaptureTarget)
         self.ui.computeRegistrationBtn.clicked.connect(self._onComputeRegistration)
+        # Registro sin fiduciales (pose planeada del marcador). Boton opcional:
+        # si no existe en la UI, se puede llamar por consola:
+        #   slicer.modules.CTNavigatorWidget._onRegisterFromPlan()
+        if hasattr(self.ui, "registerFromPlanBtn"):
+            self.ui.registerFromPlanBtn.clicked.connect(self._onRegisterFromPlan)
 
         self.ui.modelOpacitySlider.valueChanged.connect(self._onBiomodelOpacity)
         self.ui.markerOpacitySlider.valueChanged.connect(self._onMarkerOpacity)
@@ -456,7 +461,36 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
 
         return median.tolist()
 
-    
+    def _captureAveragedOverOrientations(self, getter, label, nOrientations=6):
+        """Captura el mismo punto fisico a N orientaciones distintas y devuelve
+        la mediana. Ataca el sesgo de centroide dependiente de orientacion."""
+        subs = []
+        while len(subs) < nOrientations:
+            # cada sub-captura reutiliza tu _captureStablePosition (mediana temporal + gate)
+            p = self._captureStablePosition(getter, f"{label} [{len(subs)+1}/{nOrientations}]")
+            if p is None:
+                # gate fallido: no cuenta, el usuario reintenta esa orientacion
+                if not slicer.util.confirmYesNoDisplay(
+                        f"{label}: sub-captura inestable. Reintentar esta orientacion? "
+                        "(No = abortar el punto)"):
+                    return None
+                continue
+            subs.append(np.asarray(p, dtype=float))
+            if len(subs) < nOrientations:
+                slicer.util.infoDisplay(
+                    f"{label}: {len(subs)}/{nOrientations} hecha. "
+                    "GIRA el instrumento a otra orientacion (punta quieta) y captura.")
+
+        data = np.vstack(subs)
+        center = np.median(data, axis=0)
+
+        # dispersion entre orientaciones = diagnostico de cuanto sesgo habia
+        spread = float(np.sqrt(np.mean(np.sum((data - center) ** 2, axis=1))))
+        slicer.util.infoDisplay(
+            f"{label}: punto capturado ({nOrientations} orientaciones, "
+            f"dispersion inter-orientacion {spread:.1f} mm).")
+
+        return center.tolist()
 
     def _onCaptureTip(self):
         """Captura la posicion actual de la punta (origen de ToolToMarker, en coords
@@ -551,6 +585,43 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
             if getattr(self, "_secondaryWindow", None) is not None:
                 self._secondaryWindow.close()
                 self._secondaryWindow = None
+
+    def _onRegisterFromPlan(self):
+        """Registro SIN fiduciales: fija MarkerToCT a la pose planeada del STL del
+        marcador (heredada del CAD). No usa la punta, asi que salta el error de
+        captura (~12 mm) que domina el registro por fiduciales.
+
+        Requisito: el frame local de CreateMarker (las esferas en KnownModels) debe
+        coincidir con el frame del STL del marcador. Se verifica con el TRE tras
+        aplicarlo; si sale mal, hay que alinear esferas<->STL una vez (Kabsch)."""
+        markerModel = self.ui.markerModelSelector.currentNode()
+        if markerModel is None:
+            self.ui.regResultLabel.setText("⚠ Selecciona el STL del marcador en el desplegable.")
+            return
+
+        # Pose del STL en espacio CT: su transform-a-mundo.
+        # Si el STL esta 'horneado' en RAS (sin transform), queda identidad.
+        planned = vtk.vtkMatrix4x4()
+        tnode = markerModel.GetParentTransformNode()
+        if tnode is not None:
+            tnode.GetMatrixTransformToWorld(planned)
+
+        markerToCT = self.logic.getOrCreateTransform("MarkerToCT")
+        markerToCT.SetMatrixTransformToParent(planned)
+        # El STL pasa a colgar de MarkerToCT (lo mueve el tracking en vivo).
+        markerModel.SetAndObserveTransformNodeID(markerToCT.GetID())
+
+        print("[Plan] MarkerToCT fijado a la pose planeada del marcador:")
+        for r in range(4):
+            print("   ", [round(planned.GetElement(r, c), 3) for c in range(4)])
+
+        self.ui.regResultLabel.setText("Registro por plan aplicado (sin fiduciales).")
+        self.ui.regResultLabel.setStyleSheet(
+            "font-size: 12px; font-weight: bold; color: #27ae60;")
+        slicer.util.infoDisplay(
+            "Registro por plan aplicado. Arranca el tracking y toca un punto conocido: "
+            "mide el TRE contra las dianas. Si el marcador virtual no cae sobre las bolas "
+            "reales, el frame de CreateMarker no coincide con el del STL.")
 
     def _onConnectToggle(self, checked):
         if checked:

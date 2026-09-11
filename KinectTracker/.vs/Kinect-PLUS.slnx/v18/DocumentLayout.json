@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|C:\\TFM\\CTNavigator-clone\\KinectTracker\\kinect-plus\\ballprofiler.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|solutionrelative:kinect-plus\\ballprofiler.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|c:\\tfm\\ctnavigator-clone\\kinecttracker\\kinect-plus\\stereodepthmapper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|solutionrelative:kinect-plus\\stereodepthmapper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -41,10 +45,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|C:\\TFM\\CTNavigator-clone\\KinectTracker\\kinect-plus\\blob2dinfo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|solutionrelative:kinect-plus\\blob2dinfo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|C:\\TFM\\CTNavigator-clone\\KinectTracker\\kinect-plus\\ballprofiler.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{43EB6782-A9DC-4E16-9573-9D24D7B94A83}|Kinect-PLUS\\Kinect-PLUS.csproj|solutionrelative:kinect-plus\\ballprofiler.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -54,48 +54,11 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 5,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "StereoDepthMapper.cs",
-              "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\StereoDepthMapper.cs",
-              "RelativeDocumentMoniker": "Kinect-PLUS\\StereoDepthMapper.cs",
-              "ToolTip": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\StereoDepthMapper.cs",
-              "RelativeToolTip": "Kinect-PLUS\\StereoDepthMapper.cs",
-              "ViewState": "AgIAAAcAAAAAAAAAAAAzwC4AAABSAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-08-23T07:51:28.35Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "KnownModels.cs",
-              "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\KnownModels.cs",
-              "RelativeDocumentMoniker": "Kinect-PLUS\\KnownModels.cs",
-              "ToolTip": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\KnownModels.cs",
-              "RelativeToolTip": "Kinect-PLUS\\KnownModels.cs",
-              "ViewState": "AgIAAAgAAAAAAAAAAAAAwBEAAABBAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-08-22T16:52:32.087Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "ProcessTooltip.cs",
-              "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\ProcessTooltip.cs",
-              "RelativeDocumentMoniker": "Kinect-PLUS\\ProcessTooltip.cs",
-              "ToolTip": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\ProcessTooltip.cs",
-              "RelativeToolTip": "Kinect-PLUS\\ProcessTooltip.cs",
-              "ViewState": "AgIAAIQAAAAAAAAAAAAYwJgAAABkAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-08-19T17:20:00.383Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 5,
               "Title": "KalmanPoseFilter.cs",
               "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\KalmanPoseFilter.cs",
               "RelativeDocumentMoniker": "Kinect-PLUS\\KalmanPoseFilter.cs",
@@ -107,7 +70,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 6,
               "Title": "PoseEstimator.cs",
               "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\PoseEstimator.cs",
               "RelativeDocumentMoniker": "Kinect-PLUS\\PoseEstimator.cs",
@@ -119,7 +82,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "KinectConfig.cs",
               "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\KinectConfig.cs",
               "RelativeDocumentMoniker": "Kinect-PLUS\\KinectConfig.cs",
@@ -131,7 +94,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 7,
               "Title": "GeometryMatcher.cs",
               "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\GeometryMatcher.cs",
               "RelativeDocumentMoniker": "Kinect-PLUS\\GeometryMatcher.cs",
@@ -143,7 +106,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 8,
               "Title": "DetectionStats.cs",
               "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\DetectionStats.cs",
               "RelativeDocumentMoniker": "Kinect-PLUS\\DetectionStats.cs",
@@ -155,7 +118,45 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 0,
+              "Title": "BallProfiler.cs",
+              "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\BallProfiler.cs",
+              "RelativeDocumentMoniker": "Kinect-PLUS\\BallProfiler.cs",
+              "ToolTip": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\BallProfiler.cs",
+              "RelativeToolTip": "Kinect-PLUS\\BallProfiler.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAdAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-08-04T19:57:08.54Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "StereoDepthMapper.cs",
+              "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\StereoDepthMapper.cs",
+              "RelativeDocumentMoniker": "Kinect-PLUS\\StereoDepthMapper.cs",
+              "ToolTip": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\StereoDepthMapper.cs",
+              "RelativeToolTip": "Kinect-PLUS\\StereoDepthMapper.cs",
+              "ViewState": "AgIAAAgAAAAAAAAAAAA3wAgAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-08-23T07:51:28.35Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "ProcessTooltip.cs",
+              "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\ProcessTooltip.cs",
+              "RelativeDocumentMoniker": "Kinect-PLUS\\ProcessTooltip.cs",
+              "ToolTip": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\ProcessTooltip.cs",
+              "RelativeToolTip": "Kinect-PLUS\\ProcessTooltip.cs",
+              "ViewState": "AgIAAIQAAAAAAAAAAAAYwJgAAABkAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-08-19T17:20:00.383Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
               "Title": "BlobDetector.cs",
               "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\BlobDetector.cs",
               "RelativeDocumentMoniker": "Kinect-PLUS\\BlobDetector.cs",
@@ -167,7 +168,19 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 3,
+              "Title": "KnownModels.cs",
+              "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\KnownModels.cs",
+              "RelativeDocumentMoniker": "Kinect-PLUS\\KnownModels.cs",
+              "ToolTip": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\KnownModels.cs",
+              "RelativeToolTip": "Kinect-PLUS\\KnownModels.cs",
+              "ViewState": "AgIAAAgAAAAAAAAAAAAAwBEAAABBAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-08-22T16:52:32.087Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
               "Title": "Blob2DInfo.cs",
               "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\Blob2DInfo.cs",
               "RelativeDocumentMoniker": "Kinect-PLUS\\Blob2DInfo.cs",
@@ -176,18 +189,6 @@
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-08-04T20:01:10.708Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 10,
-              "Title": "BallProfiler.cs",
-              "DocumentMoniker": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\BallProfiler.cs",
-              "RelativeDocumentMoniker": "Kinect-PLUS\\BallProfiler.cs",
-              "ToolTip": "C:\\TFM\\CTNavigator-clone\\KinectTracker\\Kinect-PLUS\\BallProfiler.cs",
-              "RelativeToolTip": "Kinect-PLUS\\BallProfiler.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABMAAAA2AAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-08-04T19:57:08.54Z"
             }
           ]
         }
