@@ -10,8 +10,16 @@
 *.nupkg
 
 # Build outputs
-*.dll
 *.pdb
+# OJO: no ignores *.dll globalmente, el exe distribuido las necesita
+
+# Python / Slicer
+**/__pycache__/
+*.pyc
+
+# Datos locales
+output/
+*.csv
 
 # Otros
 *.log

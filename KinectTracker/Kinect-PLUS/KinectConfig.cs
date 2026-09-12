@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Numerics;
 
 namespace KinectTracker
@@ -157,9 +158,9 @@ namespace KinectTracker
                 if (mode == OperationMode.Profiling && profiler != null)
                 {
                     if (profileKind == ProfileKind.Mapping)
-                        profiler.MapSummary($@"C:\TFM\Validación\Caracterización\map_{knownDistance}.csv");
+                        profiler.MapSummary(Path.Combine(Constants.OUTPUT_DIR, $"map_{knownDistance}.csv")); 
                     else
-                        profiler.Summary($@"C:\TFM\Validación\Caracterización\profile_{knownDistance}.csv");
+                        profiler.Summary(Path.Combine(Constants.OUTPUT_DIR, $"profile_{knownDistance}.csv"));
                 }
 
                 sensorA.Stop();
@@ -173,9 +174,9 @@ namespace KinectTracker
                 if (mode == OperationMode.Profiling && profiler != null)
                 {
                     if (profileKind == ProfileKind.Mapping)
-                        profiler.MapSummary($@"C:\TFM\Validación\Caracterización\map_{knownDistance}.csv");
+                        profiler.MapSummary(Path.Combine(Constants.OUTPUT_DIR, $"map_{knownDistance}.csv"));
                     else
-                        profiler.Summary($@"C:\TFM\Validación\Caracterización\profile_{knownDistance}.csv");
+                        profiler.Summary(Path.Combine(Constants.OUTPUT_DIR, $"profile_{knownDistance}.csv"));
                 }
 
                 sensorB.Stop();
@@ -241,7 +242,7 @@ namespace KinectTracker
                 viewer.UpdateIRImages(grisA, grisB);
 
                 if (viewer.ConsumirCaptura())
-                    profiler.GuardarParCalib(grisA, grisB, @"C:\calib");
+                    profiler.GuardarParCalib(grisA, grisB, Constants.CALIB_DIR);
 
                 return;   //en calibración no se detecta ni triangula
             }

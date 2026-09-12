@@ -37,6 +37,9 @@ Estructura del modulo:
     Opacidades y surgeon display
 """
 
+from ast import arg
+import os
+
 import numpy as np
 import vtk
 import ctk
@@ -632,16 +635,17 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
                 slicer.mrmlScene.RemoveNode(old)
             
             # 1. Lanzar el .exe con el modo elegido
-            arg = self.ui.modeCombo.currentData
-            self._proc = qt.QProcess()
-            self._proc.started.connect(lambda: self._setConnStatus("process started", "green"))
-            self._proc.errorOccurred.connect(
-                lambda e: self._setConnStatus(f"error launching exe: {e}", "red"))
-            self._proc.start("cmd.exe", [
-                "/c", "start", "",
-                "C:/TFM/CTNavigator-clone/KinectTracker/Kinect-PLUS/bin/Debug/Kinect-PLUS.exe",
-                arg
-            ])
+            # Ruta al backend: configurable por entorno, con fallback junto al modulo
+            exePath = os.environ.get("CTNAVIGATOR_EXE")
+            if not exePath:
+                moduleDir = os.path.dirname(os.path.abspath(__file__))
+                exePath = os.path.join(moduleDir, "KinectTracker.exe")
+
+            if not os.path.exists(exePath):
+                self._setConnStatus(f"backend .exe not found: {exePath}", "red")
+                return
+
+            self._proc.start("cmd.exe", ["/c", "start", "", exePath, arg])
 
             # 2. Crear y arrancar el connector (cliente hacia el server del C#)
             self._connector = slicer.mrmlScene.AddNewNodeByClass(

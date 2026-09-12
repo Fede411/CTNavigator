@@ -1,10 +1,18 @@
-﻿namespace KinectTracker
+﻿using System;
+using System.IO;
+
+namespace KinectTracker
 {//Clase de la mayoría de constantes del sistema, para experimentación fácil.
     public static class Constants
     {
         //IDs de los Kinects
         public const string KINECT_A_ID = @"USB\VID_045E&PID_02AE\A00361A06970039A";
         public const string KINECT_B_ID = @"USB\VID_045E&PID_02AE\A00366A21910044A";
+
+        public static readonly string OUTPUT_DIR = Path.Combine(
+            AppDomain.CurrentDomain.BaseDirectory, "output");
+        public static readonly string CALIB_DIR = Path.Combine(
+            AppDomain.CurrentDomain.BaseDirectory, "calib");
 
         //Visualizacion y filtrado de imagen
         public const int IMG_WIDTH = 640;
