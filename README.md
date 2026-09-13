@@ -85,7 +85,7 @@ Place the resulting parameters in the calibration folder used by the backend (se
 | `SlicerModule/` | 3D Slicer Python module (`CTNavigator.py`, `CTNavigator.ui`, `Resources/`) and a copy of the tracking backend (`KinectTracker.exe`) |
 | `KinectTracker/Kinect-PLUS/` | C# tracking backend source (`.cs`, `.csproj`, `packages.config`) |
 | `Hardware/KinectCase/` | STL files for the stereo-camera casing and mounts |
-| `Hardware/Calibration/` | Example checkerboard capture sessions used for calibration |
+| `Hardware/Calibration/` | Example checkerboard STL used for calibration |
 
 > The `KinectTracker.exe` shipped alongside the module is the compiled backend; the C# sources under `KinectTracker/Kinect-PLUS/` build the same executable. NuGet packages (Emgu.CV, MathNet, etc.) are restored automatically on build.
 
