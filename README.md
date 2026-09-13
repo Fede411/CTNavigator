@@ -52,6 +52,7 @@ The navigation module is a Python scripted module (`CTNavigator.py`, `CTNavigato
 3. Restart Slicer. The module will appear under the **CTNavigator** category.
 
 The module launches the tracking backend (`KinectTracker.exe`) automatically; keep it in the same folder as `CTNavigator.py`. To use a different location, set the `CTNAVIGATOR_EXE` environment variable to its full path.
+
 ---
 
 ## Calibration
@@ -83,8 +84,8 @@ Place the resulting parameters in the calibration folder used by the backend (se
 |------|----------|
 | `SlicerModule/` | 3D Slicer Python module (`CTNavigator.py`, `CTNavigator.ui`, `Resources/`) and a copy of the tracking backend (`KinectTracker.exe`) |
 | `KinectTracker/Kinect-PLUS/` | C# tracking backend source (`.cs`, `.csproj`, `packages.config`) |
-| `Hardware/Carrito/` | STL files for the stereo-camera casing and mounts |
-| `Hardware/Stereo Calibration/` | Example checkerboard capture sessions used for calibration |
+| `Hardware/KinectCase/` | STL files for the stereo-camera casing and mounts |
+| `Hardware/Calibration/` | Example checkerboard capture sessions used for calibration |
 
 > The `KinectTracker.exe` shipped alongside the module is the compiled backend; the C# sources under `KinectTracker/Kinect-PLUS/` build the same executable. NuGet packages (Emgu.CV, MathNet, etc.) are restored automatically on build.
 
