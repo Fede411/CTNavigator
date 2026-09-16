@@ -639,12 +639,15 @@ class CTNavigatorWidget(ScriptedLoadableModuleWidget):
             exePath = os.environ.get("CTNAVIGATOR_EXE")
             if not exePath:
                 moduleDir = os.path.dirname(os.path.abspath(__file__))
-                exePath = os.path.join(moduleDir, "KinectTracker.exe")
+                exePath = os.path.join(moduleDir,"backend", "KinectTracker.exe")
 
             if not os.path.exists(exePath):
                 self._setConnStatus(f"backend .exe not found: {exePath}", "red")
                 return
-
+            self._proc = qt.QProcess()
+            self._proc.errorOccurred.connect(
+                lambda e: self._setConnStatus(f"error launching exe: {e}", "red"))
+            
             self._proc.start("cmd.exe", ["/c", "start", "", exePath, arg])
 
             # 2. Crear y arrancar el connector (cliente hacia el server del C#)
